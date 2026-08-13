@@ -4,13 +4,12 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState } from '@/components/ui/card';
 import { ReportForm } from '@/features/daily/components/report-form';
-import { countCommentsByReport } from '@/features/daily/feedback-queries';
 import {
-  findRecordableEvent,
-  getPracticeGoalFor,
-  getReportFor,
-  listMyReports,
-} from '@/features/daily/queries';
+  countCommentsByReport,
+  countUnacknowledgedByReport,
+  listCoachCandidates,
+} from '@/features/daily/feedback-queries';
+import { findRecordableEvent, getReportFor, listMyReports } from '@/features/daily/queries';
 import { suggestGoalsForToday } from '@/features/goals/lib/goals';
 import { getGoalOverview, listTagsForReports } from '@/features/goals/queries';
 import { requireSession } from '@/lib/auth/session';
@@ -23,10 +22,9 @@ export default async function ReportPage() {
   const session = await requireSession();
   const date = todayInTokyo();
 
-  const [event, existing, goal, past] = await Promise.all([
+  const [event, existing, past] = await Promise.all([
     findRecordableEvent(session.teamId, date),
     getReportFor(session, date),
-    getPracticeGoalFor(session, date),
     listMyReports(session, 10),
   ]);
 
@@ -51,6 +49,12 @@ export default async function ReportPage() {
 
   const existingTags = await listTagsForReports(existing ? [existing.id] : []);
   const selectedGoalIds = (existingTags.get(existing?.id ?? '') ?? []).map((tag) => tag.goalId);
+
+  // 0027: 質問で呼べるコーチと、まだ受け取っていない返事
+  const [coaches, unacknowledged] = await Promise.all([
+    listCoachCandidates(session),
+    countUnacknowledgedByReport(past.map((report) => report.id)),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -82,9 +86,9 @@ export default async function ReportPage() {
           date={date}
           eventId={event?.id ?? null}
           existing={existing}
-          personalGoal={goal?.goal ?? null}
           goals={pickableGoals}
           selectedGoalIds={selectedGoalIds}
+          coaches={coaches}
         />
       </Card>
 
@@ -110,6 +114,10 @@ export default async function ReportPage() {
                       )}
                       <Badge tone="neutral">{REPORT_VISIBILITY_LABELS[report.visibility]}</Badge>
                       {comments > 0 ? <Badge tone="action">コメント{comments}件</Badge> : null}
+                      {/* 0027: 読んでいないものは、一覧でも分かるようにする */}
+                      {(unacknowledged.get(report.id) ?? 0) > 0 ? (
+                        <Badge tone="warning">未読{unacknowledged.get(report.id)}件</Badge>
+                      ) : null}
                     </p>
                     {report.what_went_well ? (
                       <p className="mt-1 line-clamp-2 text-sm text-[--color-muted]">

@@ -148,10 +148,101 @@ describe('提出できるかどうか', () => {
   it('目標だけでは提出させない（振り返りが無い）', () => {
     expect(hasEnoughToSubmit({ ...empty, personal_goal: '前を向く' })).toBe(false);
   });
+
+  it('**画面から外した項目では提出できない**（0027）', () => {
+    // 入力欄を8つに絞ったとき、ここが古いままだと
+    // 「画面に無い項目のせいで提出できる／できない」が起きて、理由が分からなくなる。
+    expect(hasEnoughToSubmit({ ...empty, what_happened: '過去のデータ' })).toBe(false);
+    expect(hasEnoughToSubmit({ ...empty, cause: '過去のデータ' })).toBe(false);
+  });
 });
 
-describe('日報へのコメント（16章）', () => {
+describe('画面に残す項目（0027）', () => {
+  /*
+    入力欄を8つに絞ったとき、いちばん怖いのは
+    **フォームが送らない列を null で上書きして、過去に書いたものを消すこと**。
+
+    保存する列の一覧は actions.ts にあるが、そこは Server Action なので
+    そのままは呼べない。ここでは「画面に出す項目」の取り決めを固定して、
+    増減したときに気づけるようにしておく。
+  */
+  const ON_SCREEN = [
+    'what_went_well',
+    'what_went_wrong',
+    'next_action',
+    'self_rating',
+    'fatigue_level',
+    'free_note',
+  ] as const;
+
+  const OFF_SCREEN = [
+    'personal_goal',
+    'what_happened',
+    'cause',
+    'improvement',
+    'prevention',
+    'response_taken',
+    'intensity',
+    'mood',
+    'condition_level',
+  ] as const;
+
+  it('画面に出す項目は8つ（目標と質問を含めて）', () => {
+    // 中目標（タグ）と質問は別の表に入るので、日報の列としては6つ。
+    expect(ON_SCREEN).toHaveLength(6);
+  });
+
+  it('**外した項目は、列としては残っている**', () => {
+    // 消したのは入力欄だけ。過去に書いたものは詳細画面に出る。
+    const parsed = dailyReportSchema.parse({
+      report_date: '2026-08-12',
+      what_happened: '過去のデータ',
+      visibility: 'staff',
+      status: 'draft',
+      self_rating: '',
+      intensity: '',
+      fatigue_level: '',
+      mood: '',
+      condition_level: '',
+    });
+    expect(parsed.what_happened).toBe('過去のデータ');
+  });
+
+  it('画面に出す項目と、外した項目が重なっていない', () => {
+    const overlap = ON_SCREEN.filter((key) => (OFF_SCREEN as readonly string[]).includes(key));
+    expect(overlap).toEqual([]);
+  });
+});
+
+describe('日報へのコメント（16章・0027）', () => {
   const reportId = '11111111-1111-1111-1111-111111111111';
+  const otherId = '22222222-2222-2222-2222-222222222222';
+
+  it('返信先と宛先を付けられる', () => {
+    const parsed = reportCommentSchema.parse({
+      daily_report_id: reportId,
+      body: '返します',
+      parent_id: otherId,
+      mention_member_ids: [otherId],
+    });
+    expect(parsed.parent_id).toBe(otherId);
+    expect(parsed.mention_member_ids).toEqual([otherId]);
+  });
+
+  it('返信先も宛先も、無くてよい', () => {
+    const parsed = reportCommentSchema.parse({ daily_report_id: reportId, body: 'ひとこと' });
+    expect(parsed.parent_id).toBeNull();
+    expect(parsed.mention_member_ids).toEqual([]);
+  });
+
+  it('空文字の返信先は「返信ではない」として扱う', () => {
+    const parsed = reportCommentSchema.parse({
+      daily_report_id: reportId,
+      body: 'ひとこと',
+      parent_id: '',
+    });
+    expect(parsed.parent_id).toBeNull();
+  });
 
   it('ひとことでも通る', () => {
     const parsed = reportCommentSchema.safeParse({ daily_report_id: reportId, body: 'いいね' });

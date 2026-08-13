@@ -9,7 +9,11 @@ import {
   listUpcomingEvents,
   getActiveSeason,
 } from '@/features/timeline/queries';
-import { listReportsAwaitingComment } from '@/features/daily/feedback-queries';
+import {
+  listReportsAwaitingComment,
+  listUnacknowledgedFeedbacks,
+  type UnacknowledgedFeedback,
+} from '@/features/daily/feedback-queries';
 import { countUnreadAnswers, countWaitingQuestions, listAwaitingCoach } from '@/features/feedback/queries';
 import {
   countOpenMentions,
@@ -57,6 +61,13 @@ export interface PlayerDashboardData {
   recentBestCount: number;
   /** 動画で自分が呼ばれていて、まだ返していないもの（0024）。 */
   openMentionCount: number;
+  /**
+   * まだ受け取っていないコーチの返事（0027）。
+   *
+   * **押すまで消えない。** 「開いた」ではなく「押した」で閉じる。
+   * 返してもらった言葉が読まれたことを、コーチ側も確かめられるようにする。
+   */
+  unacknowledgedFeedbacks: UnacknowledgedFeedback[];
 }
 
 /** 選手向け「今日」（11章）。 */
@@ -123,6 +134,9 @@ export async function getPlayerDashboard(session: AppSession): Promise<PlayerDas
     countOpenMentions(session),
   ]);
 
+  // 0027: コーチの返事は、読んだと押すまで残す
+  const unacknowledgedFeedbacks = await listUnacknowledgedFeedbacks();
+
   const todayState: TodayState = {
     events: events.map((event) => ({
       id: event.id,
@@ -140,6 +154,8 @@ export async function getPlayerDashboard(session: AppSession): Promise<PlayerDas
     // 0026: 書いただけで、まだ一度も記録に付けていない目標。
     // 責める数ではなく、思い出すきっかけとして出す。
     untouchedGoalCount: goalOverview.summary.untouched,
+    // 0027: コーチの返事は、読むまで「残っていること」に出す
+    unreadFeedbackReplyCount: unacknowledgedFeedbacks.length,
   };
 
   return {
@@ -154,6 +170,7 @@ export async function getPlayerDashboard(session: AppSession): Promise<PlayerDas
     unreadNotificationCount,
     recentBestCount,
     openMentionCount,
+    unacknowledgedFeedbacks,
   };
 }
 

@@ -111,6 +111,16 @@ export const reportCommentSchema = z.object({
     .trim()
     .min(1, 'ひとことでいいので書いてください。')
     .max(2000, '長すぎます（2000文字まで）'),
+  /** 返信のとき、返信先（0027）。1段だけ。 */
+  parent_id: z
+    .string()
+    .optional()
+    .transform((value) => (value === undefined || value.trim() === '' ? null : value.trim()))
+    .refine((value) => value === null || z.guid().safeParse(value).success, {
+      message: '返信先の指定が正しくありません。',
+    }),
+  /** 呼びたい相手（0027）。日報から名指しでコーチを呼ぶときに使う。 */
+  mention_member_ids: z.array(z.guid('宛先の指定が正しくありません。')).default([]),
 });
 
 export type ReportCommentInput = z.infer<typeof reportCommentSchema>;
@@ -121,12 +131,8 @@ export type ReportCommentInput = z.infer<typeof reportCommentSchema>;
  * 下書きなら空でも保存できる。
  */
 export function hasEnoughToSubmit(input: DailyReportInput): boolean {
-  const written = [
-    input.what_happened,
-    input.what_went_well,
-    input.what_went_wrong,
-    input.next_action,
-    input.free_note,
-  ];
+  // 0027 で入力欄を8つに絞った。ここも、画面に出ているものだけを見る。
+  // 画面から消した項目で「提出できる」が決まると、理由が分からなくなる。
+  const written = [input.what_went_well, input.what_went_wrong, input.next_action, input.free_note];
   return written.some((value) => value !== null && value.length > 0);
 }

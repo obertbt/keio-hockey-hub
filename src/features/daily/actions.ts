@@ -7,6 +7,7 @@ import { requireSession } from '@/lib/auth/session';
 import { todayInTokyo } from '@/lib/datetime';
 import { createClient } from '@/lib/supabase/server';
 
+import { postReportQuestion } from './ask';
 import { conditionSchema, dailyReportSchema, hasEnoughToSubmit, practiceGoalSchema } from './schemas';
 
 /**
@@ -207,7 +208,7 @@ export async function saveDailyReport(
   if (status === 'submitted' && !hasEnoughToSubmit(input)) {
     return {
       error:
-        '提出するには、少なくとも1つは書いてください（できたこと / できなかったこと / 次回取り組むこと など）。下書きとしてなら空でも保存できます。',
+        '提出するには、少なくとも1つは書いてください（できたこと / 反省点 / 次回に向けた取り組み / 自由記述）。下書きとしてなら空でも保存できます。',
     };
   }
 
@@ -222,22 +223,24 @@ export async function saveDailyReport(
     .limit(1)
     .maybeSingle();
 
+  /*
+    0027 で入力欄を8つに絞った。
+
+    **画面に無い列を、ここで null で上書きしない。**
+    フォームが送ってこない項目をそのまま書き戻すと、
+    過去に書いたもの（やったこと・原因・改善…）が、
+    日報を開いて保存し直しただけで消える。
+    書いたものが黙って消えるのが、いちばんやってはいけないこと。
+
+    いま画面にあるものだけを書く。残りは触らない。
+  */
   const values = {
     event_id: input.event_id ?? null,
-    personal_goal: input.personal_goal,
-    what_happened: input.what_happened,
     what_went_well: input.what_went_well,
     what_went_wrong: input.what_went_wrong,
-    cause: input.cause,
-    improvement: input.improvement,
-    prevention: input.prevention,
-    response_taken: input.response_taken,
     next_action: input.next_action,
     self_rating: input.self_rating,
-    intensity: input.intensity,
     fatigue_level: input.fatigue_level,
-    mood: input.mood,
-    condition_level: input.condition_level,
     free_note: input.free_note,
     visibility: input.visibility,
     status: input.status,
@@ -272,6 +275,20 @@ export async function saveDailyReport(
     // 日報そのものは保存できている。目標が付かなかっただけで
     // 「保存できませんでした」と出すと、書いたものが消えたように見える。
     if (tagResult.error) console.warn(`[daily] 目標を付けられませんでした: ${tagResult.error}`);
+
+    // 0027: 質問も同じ1回の操作で出す。
+    // 別の画面へ行かせると、聞きたいことがあっても聞かれないまま終わる。
+    const questionResult = await postReportQuestion(session, {
+      reportId,
+      body: text(formData, 'question') ?? '',
+      memberIds: formData
+        .getAll('question_member_ids')
+        .filter((value): value is string => typeof value === 'string' && value !== ''),
+      reportDate: input.report_date,
+    });
+    // 日報そのものは保存できている。質問が付かなかっただけで
+    // 「保存できませんでした」と出すと、書いたものが消えたように見える。
+    if (questionResult.error) console.warn(`[daily] 質問を出せませんでした: ${questionResult.error}`);
   }
 
   revalidatePath('/today');

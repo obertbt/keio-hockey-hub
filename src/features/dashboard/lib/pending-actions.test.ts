@@ -147,6 +147,39 @@ describe('試合の日', () => {
   });
 });
 
+describe('コーチからの返事（0027）', () => {
+  it('読んでいない返事を、やることに出す', () => {
+    const actions = pendingActions(state({ unreadFeedbackReplyCount: 2 }));
+    const target = actions.find((action) => action.key === 'feedback_unacknowledged');
+
+    expect(target?.label).toBe('コーチからの返事を読む（2件）');
+    expect(target?.href).toBe('/report');
+  });
+
+  it('0件なら出さない', () => {
+    const actions = pendingActions(state({ unreadFeedbackReplyCount: 0 }));
+    expect(actions.map((action) => action.key)).not.toContain('feedback_unacknowledged');
+  });
+
+  it('項目が無くても落ちない（0027 より前のデータ）', () => {
+    const actions = pendingActions(state({ unreadFeedbackReplyCount: undefined }));
+    expect(actions.map((action) => action.key)).not.toContain('feedback_unacknowledged');
+  });
+
+  it('**日報を書くより先に出す**', () => {
+    // 返事を待たせているのはこちら。読むほうが先。
+    const actions = pendingActions(state({ unreadFeedbackReplyCount: 1 }));
+    const keys = actions.map((action) => action.key);
+
+    expect(keys.indexOf('feedback_unacknowledged')).toBeLessThan(keys.indexOf('report'));
+  });
+
+  it('予定が無い日でも出す。読むのは練習の有無と関係ない', () => {
+    const actions = pendingActions(state({ events: [], unreadFeedbackReplyCount: 1 }));
+    expect(actions.map((action) => action.key)).toContain('feedback_unacknowledged');
+  });
+});
+
 describe('手が付いていない目標（0026）', () => {
   it('書いたのに記録に付けていないものを、やることに出す', () => {
     const actions = pendingActions(state({ untouchedGoalCount: 2 }));

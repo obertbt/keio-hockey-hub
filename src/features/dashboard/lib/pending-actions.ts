@@ -8,7 +8,14 @@ import type { EventType } from '@/types/database.types';
  */
 
 export type ActionKey =
-  'condition' | 'goal' | 'report' | 'training' | 'feedback_unread' | 'feedback_pending' | 'goal_untouched';
+  | 'condition'
+  | 'goal'
+  | 'report'
+  | 'training'
+  | 'feedback_unread'
+  | 'feedback_pending'
+  | 'goal_untouched'
+  | 'feedback_unacknowledged';
 
 export interface PendingAction {
   key: ActionKey;
@@ -48,6 +55,13 @@ export interface TodayState {
    * 責めるためではなく、思い出すきっかけとして出す。
    */
   untouchedGoalCount?: number;
+  /**
+   * まだ「読みました」を押していないコーチの返事の数（0027）。
+   *
+   * 押すまで消えない。返してもらった言葉が読まれないままだと、
+   * コーチの側も「届いたのか」が分からず、次から書かなくなる。
+   */
+  unreadFeedbackReplyCount?: number;
 }
 
 /** 記録を求めるイベントかどうか。オフやミーティングでは日報を迫らない。 */
@@ -142,6 +156,17 @@ export function pendingActions(state: TodayState): PendingAction[] {
       label: `動画フィードバックを確認する（${state.unreadFeedbackCount}件）`,
       href: '/feedback',
       priority: 25,
+    });
+  }
+
+  // コーチが返した言葉は、いちばん先に読んでほしい。
+  // 日報を書くより前に置く。返事を待たせているのは、こちらのほうなので。
+  if ((state.unreadFeedbackReplyCount ?? 0) > 0) {
+    actions.push({
+      key: 'feedback_unacknowledged',
+      label: `コーチからの返事を読む（${state.unreadFeedbackReplyCount}件）`,
+      href: '/report',
+      priority: 5,
     });
   }
 

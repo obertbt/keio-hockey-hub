@@ -255,10 +255,28 @@ export type ReportFeedbackRow = {
   team_id: string;
   daily_report_id: string;
   author_id: string;
+  /** 返信（0027）。1段だけ。返信への返信は作れない。 */
+  parent_id: string | null;
   body: string;
+  /**
+   * 日報を書いた本人が「受け取りました」を押した時刻（0027）。
+   *
+   * 動かせるのは `acknowledge_report_feedback` だけ。
+   * コーチが「読まれたことにする」ことはできない。
+   */
+  acknowledged_at: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+};
+
+/** 日報のコメントの宛先（0027）。コーチを名指しで呼ぶ。 */
+export type ReportFeedbackMentionRow = {
+  id: string;
+  team_id: string;
+  report_feedback_id: string;
+  team_member_id: string;
+  created_at: string;
 };
 
 /** 動画の掲示板（0024）。時間 + ひとこと。返信は1段だけ。 */
@@ -936,6 +954,10 @@ export type Database = {
         ReportFeedbackRow,
         Exclude<keyof ReportFeedbackRow, 'team_id' | 'daily_report_id' | 'author_id' | 'body'>
       >;
+      report_feedback_mentions: TableShape<
+        ReportFeedbackMentionRow,
+        Exclude<keyof ReportFeedbackMentionRow, 'team_id' | 'report_feedback_id' | 'team_member_id'>
+      >;
       youtube_connections: TableShape<
         YoutubeConnectionRow,
         Exclude<keyof YoutubeConnectionRow, 'team_id' | 'channel_id' | 'refresh_token' | 'connected_by'>
@@ -1100,6 +1122,22 @@ export type Database = {
       soft_delete_training_record: { Args: { p_record_id: string }; Returns: undefined };
       soft_delete_skill: { Args: { p_skill_id: string }; Returns: undefined };
       soft_delete_report_feedback: { Args: { p_feedback_id: string }; Returns: undefined };
+      /** 受け取りの印（0027）。押せるのは日報を書いた本人だけ。 */
+      acknowledge_report_feedback: { Args: { p_feedback_id: string }; Returns: undefined };
+      /** その日報に届いているものをまとめて。押した件数を返す。 */
+      acknowledge_report_feedbacks: { Args: { p_report_id: string }; Returns: number };
+      /** まだ受け取っていないもの。選手の「今日」に出す。 */
+      list_unacknowledged_feedbacks: {
+        Args: { p_limit?: number };
+        Returns: {
+          feedback_id: string;
+          daily_report_id: string;
+          report_date: string;
+          author_name: string;
+          body: string;
+          created_at: string;
+        }[];
+      };
       soft_delete_video_comment: { Args: { p_comment_id: string }; Returns: undefined };
       /** 中目標（0026）。消すのも、まとめるのも本人だけ。 */
       soft_delete_member_goal: { Args: { p_goal_id: string }; Returns: undefined };

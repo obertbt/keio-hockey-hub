@@ -13,6 +13,85 @@ import { GoalPicker, type PickableGoal } from '@/features/goals/components/goal-
 import { REPORT_VISIBILITY_LABELS } from '@/lib/labels';
 import type { DailyReportRow, ReportVisibility } from '@/types/database.types';
 
+/**
+ * 質問と、呼びたいコーチ（0027）。
+ *
+ * 開いたときだけ出す。毎日ある欄ではないので、
+ * 常に開いていると「何か聞かないといけない」に見える。
+ */
+function QuestionField({ coaches }: { coaches: CoachOption[] }) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex min-h-12 w-full items-center justify-between rounded-lg border border-[--color-border] px-3 text-sm font-medium"
+      >
+        コーチに聞きたいことがある
+        <span className="text-[--color-muted]">開く</span>
+      </button>
+    );
+  }
+
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+
+  return (
+    <div className="space-y-3 rounded-lg border border-[--color-border] p-3">
+      <Field label="質問" htmlFor="question" hint="任意。書かなければ、何も起きません。">
+        <TextArea
+          id="question"
+          name="question"
+          rows={2}
+          maxLength={2000}
+          placeholder="持ち出しのとき、右足からのほうがいいですか"
+        />
+      </Field>
+
+      {coaches.length > 0 ? (
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium">誰に聞くか</p>
+          <div className="flex flex-wrap gap-1.5">
+            {coaches.map((coach) => {
+              const active = selected.includes(coach.teamMemberId);
+              return (
+                <button
+                  key={coach.teamMemberId}
+                  type="button"
+                  onClick={() => toggle(coach.teamMemberId)}
+                  aria-pressed={active}
+                  className={`min-h-9 rounded-full border px-3 text-xs ${
+                    active
+                      ? 'border-action-500 bg-action-500/15 text-action-700 dark:text-action-400 font-medium'
+                      : 'border-[--color-border] text-[--color-muted]'
+                  }`}
+                >
+                  {coach.name}
+                </button>
+              );
+            })}
+          </div>
+          {selected.map((id) => (
+            <input key={id} type="hidden" name="question_member_ids" value={id} />
+          ))}
+          <p className="text-xs text-[--color-muted]">
+            選ぶと、その人に知らせが届きます。選ばなくても、コーチの画面には出ます。
+          </p>
+        </div>
+      ) : null}
+
+      <button type="button" onClick={() => setOpen(false)} className="text-xs text-[--color-muted] underline">
+        閉じる
+      </button>
+    </div>
+  );
+}
+
 function ActionButtons({ isSubmitted }: { isSubmitted: boolean }) {
   const { pending } = useFormStatus();
   return (
@@ -28,36 +107,43 @@ function ActionButtons({ isSubmitted }: { isSubmitted: boolean }) {
 }
 
 /**
- * 日報（16章）。
+ * 日報（16章 → 0027 で絞った）。
  *
- * 項目は多いが、必須はひとつも無い。
- * 「できたこと」だけ書いて出しても構わない、と伝わる作りにしている（依頼書3章の7）。
+ * 前は記述欄が10、段階評価が5あった。必須はひとつも無いのだが、
+ * **並んでいるだけで「全部書くもの」に見える**。
+ * 毎日のものなので、見えている量がそのまま負担になる（3章の7）。
  *
- * 深掘りの項目（原因・改善方法・再発防止・対処）は普段は畳んでおく。
- * 何かあった日だけ開けばよい。
+ * いま出しているのは8つだけ。
+ *   中目標 / できたこと / 反省点 / 次回に向けた取り組み
+ *   自己評価 / 疲労度 / 自由記述 / 質問
+ *
+ * **列は消していない。** 過去に書いたものは、詳細画面にそのまま出る。
+ * 入力欄から外しただけ。
  */
+export interface CoachOption {
+  teamMemberId: string;
+  name: string;
+}
+
 export function ReportForm({
   date,
   eventId,
   existing,
-  personalGoal,
   goals,
   selectedGoalIds,
+  coaches,
 }: {
   date: string;
   eventId: string | null;
   existing: DailyReportRow | null;
-  /** 今日の個人目標。最初から入れておく。 */
-  personalGoal: string | null;
   /** 選べる目標（0026）。取り組み中のものだけ。 */
   goals: PickableGoal[];
   /** すでに付いている目標。 */
   selectedGoalIds: string[];
+  /** 質問で呼べるコーチ・スタッフ（0027）。 */
+  coaches: CoachOption[];
 }) {
   const [state, action] = useActionState<DailyActionState, FormData>(saveDailyReport, {});
-  const [showDetail, setShowDetail] = useState(
-    Boolean(existing?.cause || existing?.improvement || existing?.prevention || existing?.response_taken),
-  );
 
   const isSubmitted = existing?.status === 'submitted';
 
@@ -79,14 +165,11 @@ export function ReportForm({
         </p>
       ) : null}
 
-      <Field label="今日の個人目標" htmlFor="personal_goal" hint="朝に決めたものが入っています">
-        <TextArea
-          id="personal_goal"
-          name="personal_goal"
-          rows={2}
-          defaultValue={existing?.personal_goal ?? personalGoal ?? ''}
-        />
-      </Field>
+      {/*
+        0026/0027: いちばん上は「今日どの目標に取り組んだか」。
+        押すだけで済むものを先に置くと、書き始めが軽くなる。
+      */}
+      <GoalPicker goals={goals} selectedIds={selectedGoalIds} />
 
       <Field label="できたこと" htmlFor="what_went_well">
         <TextArea
@@ -98,7 +181,7 @@ export function ReportForm({
         />
       </Field>
 
-      <Field label="できなかったこと" htmlFor="what_went_wrong">
+      <Field label="反省点" htmlFor="what_went_wrong">
         <TextArea
           id="what_went_wrong"
           name="what_went_wrong"
@@ -107,70 +190,11 @@ export function ReportForm({
         />
       </Field>
 
-      <Field label="次回取り組むこと" htmlFor="next_action" hint="次の練習の目標にそのまま使えます">
+      <Field label="次回に向けた取り組み" htmlFor="next_action" hint="次の練習の目標にそのまま使えます">
         <TextArea id="next_action" name="next_action" rows={2} defaultValue={existing?.next_action ?? ''} />
       </Field>
 
-      {/*
-        0026: 「今日はどの目標に取り組んだか」を、日報と同じ1回の操作で残す。
-        別の画面へ行かせると、まず付けてもらえない。
-      */}
-      <GoalPicker goals={goals} selectedIds={selectedGoalIds} />
-
-      {/* --- 深掘り。何かあった日だけ開く --- */}
-      <div className="rounded-lg border border-[--color-border]">
-        <button
-          type="button"
-          onClick={() => setShowDetail((value) => !value)}
-          className="flex min-h-12 w-full items-center justify-between px-3 text-sm font-medium"
-          aria-expanded={showDetail}
-        >
-          もう少し詳しく書く
-          <span className="text-[--color-muted]">{showDetail ? '閉じる' : '開く'}</span>
-        </button>
-
-        {showDetail ? (
-          <div className="space-y-4 border-t border-[--color-border] p-3">
-            <Field label="起きたこと" htmlFor="what_happened">
-              <TextArea
-                id="what_happened"
-                name="what_happened"
-                rows={2}
-                defaultValue={existing?.what_happened ?? ''}
-              />
-            </Field>
-            <Field label="原因" htmlFor="cause">
-              <TextArea id="cause" name="cause" rows={2} defaultValue={existing?.cause ?? ''} />
-            </Field>
-            <Field label="改善方法" htmlFor="improvement">
-              <TextArea
-                id="improvement"
-                name="improvement"
-                rows={2}
-                defaultValue={existing?.improvement ?? ''}
-              />
-            </Field>
-            <Field label="再発防止" htmlFor="prevention">
-              <TextArea
-                id="prevention"
-                name="prevention"
-                rows={2}
-                defaultValue={existing?.prevention ?? ''}
-              />
-            </Field>
-            <Field label="起きた後の対処" htmlFor="response_taken">
-              <TextArea
-                id="response_taken"
-                name="response_taken"
-                rows={2}
-                defaultValue={existing?.response_taken ?? ''}
-              />
-            </Field>
-          </div>
-        ) : null}
-      </div>
-
-      {/* --- 段階評価 --- */}
+      {/* --- 段階評価。0027 で2つに絞った --- */}
       <div className="space-y-4">
         <RatingField
           name="self_rating"
@@ -180,38 +204,26 @@ export function ReportForm({
           defaultValue={existing?.self_rating ?? null}
         />
         <RatingField
-          name="intensity"
-          label="練習強度"
-          lowLabel="軽い"
-          highLabel="とてもきつい"
-          defaultValue={existing?.intensity ?? null}
-        />
-        <RatingField
           name="fatigue_level"
           label="疲労度"
           lowLabel="疲れていない"
           highLabel="とても疲れている"
           defaultValue={existing?.fatigue_level ?? null}
         />
-        <RatingField
-          name="mood"
-          label="気分"
-          lowLabel="沈んでいる"
-          highLabel="良い"
-          defaultValue={existing?.mood ?? null}
-        />
-        <RatingField
-          name="condition_level"
-          label="体の状態"
-          lowLabel="よくない"
-          highLabel="とても良い"
-          defaultValue={existing?.condition_level ?? null}
-        />
       </div>
 
       <Field label="自由記述" htmlFor="free_note" hint="任意">
         <TextArea id="free_note" name="free_note" rows={3} defaultValue={existing?.free_note ?? ''} />
       </Field>
+
+      {/*
+        0027: 聞きたいことを、日報と同じ1回の操作で出す。
+        別の画面へ行かせると、聞きたいことがあっても聞かれないまま終わる。
+
+        呼ぶ相手を選ばなくても書ける。
+        選ばなかったものは、コーチの「今日」の返事待ちに出る（0024 と同じ考え方）。
+      */}
+      <QuestionField coaches={coaches} />
 
       <Field
         label="公開範囲"

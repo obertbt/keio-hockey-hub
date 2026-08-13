@@ -75,6 +75,36 @@ async function PlayerToday() {
         <WriteLink href="/videos" label="動画に書き込む" icon={<Video size={22} aria-hidden />} />
       </div>
 
+      {/*
+        0027: コーチの返事は、押して閉じるまでここに出す。
+        本文をそのまま出す。開かせないと読まれない、を避ける。
+      */}
+      {data.unacknowledgedFeedbacks.length > 0 ? (
+        <Card className="border-amber-400">
+          <CardHeader
+            title={`コーチからの返事が ${data.unacknowledgedFeedbacks.length} 件`}
+            icon={<MessageSquare size={16} aria-hidden />}
+            description="読んだら「読みました」を押してください。"
+          />
+          <ul className="space-y-2">
+            {data.unacknowledgedFeedbacks.map((item) => (
+              <li key={item.feedbackId}>
+                <Link
+                  href={`/report/${item.reportId}`}
+                  className="block rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-950/40"
+                >
+                  <span className="flex flex-wrap items-center gap-2 text-xs text-[--color-muted]">
+                    <span className="font-medium text-[--color-foreground]">{item.authorName}</span>
+                    <span>{formatDateLabel(item.reportDate)}の日報</span>
+                  </span>
+                  <span className="mt-0.5 block text-sm">{item.body}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       {data.openMentionCount > 0 ? (
         <Link
           href="/videos"
