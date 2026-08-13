@@ -829,6 +829,67 @@ RLS が答えられるのは「その行を触ってよいか」まで。
 記録としては嘘になり、その嘘はコーチ側から見抜けません。
 押してもらう手間より、記録が信じられなくなるほうが高くつきます。
 
+## 17-5. 書いたものを読み返さない（実際に起きた不具合）
+
+「動画にコメントしたのに通知が来ない」と報告がありました。
+
+原因は、通知を作る5か所すべてが同じ形をしていたことです。
+
+```ts
+const { data, error } = await supabase
+  .from('notifications').insert({...}).select('id').single();
+if (error || !data) return;                 // ← 必ずここで抜けていた
+await supabase.from('notification_targets').insert(...);
+```
+
+**insert のあとの `.select()` にも SELECT ポリシーが効きます。**
+`notifications_select` は「自分が宛先の通知だけ見える」なので、
+宛先を入れる前の通知は、作った本人にも見えません。
+行そのものは作られているのに `.single()` が 0 件で失敗し、
+**宛先を入れずに黙って返っていました。**
+
+つまり「作られたが、誰にも届かない通知」が溜まっていたことになります。
+
+### なぜ気づけなかったか
+
+0015 のコメントは、まさにこの循環に気づいていました。
+
+> ポリシーの中から素朴に notifications を select すると、
+> **その select にも notifications の SELECT ポリシーが効く**。
+
+そこでは**ポリシー側**を security definer の関数へ逃がしました。
+ところが**書き込む側の `.select()` は見落としていました**。
+同じ落とし穴の、反対側の口です。
+
+### 対処（`src/features/notifications/send.ts`）
+
+**読み返さない。** id をこちらで決めてから入れます。
+
+```ts
+const notificationId = randomUUID();
+await supabase.from('notifications').insert({ id: notificationId, ... });
+await supabase.from('notification_targets').insert(
+  targets.map((memberId) => ({ notification_id: notificationId, ... })),
+);
+```
+
+書いたものを読み返さなければ、SELECT ポリシーは関係なくなります。
+5か所を1か所にまとめ、そこだけ見れば済むようにしました。
+
+### 教訓
+
+**「自分が宛先のものだけ見える」表に書き込むときは、`.select()` を付けない。**
+
+書き込む権利と読む権利は別です。
+書けるからといって、書いたものが読めるとは限りません。
+`insert().select()` は便利ですが、**RLS のある表では
+「書いたのに読めない」で静かに失敗します**。
+
+`report_thread_test.sql` / `video_comment_test.sql` に、
+「作った本人には見えない。それでも行はある。宛先には届いている」を
+そのまま書いて固定しました。ここが 1 に変わったら、
+読み返す作りに戻してしまったということです。
+
 ## 18. 書き出し（Phase 9）
 
 記録は CSV で取り出せます（3章の12: 過去の資産を失わない）。

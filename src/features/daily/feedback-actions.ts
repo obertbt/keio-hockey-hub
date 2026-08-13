@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { sendNotification } from '@/features/notifications/send';
 import { isStaff, requireSession, type AppSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
@@ -211,33 +212,14 @@ async function addMentions(
       return;
     }
 
-    const { data: notification, error } = await supabase
-      .from('notifications')
-      .insert({
-        team_id: session.teamId,
-        notification_type: input.fromPlayer ? 'report_question' : 'report_commented',
-        title: input.fromPlayer ? '日報に質問が届いています' : '日報にコメントが届きました',
-        body: input.body.slice(0, 200),
-        link_path: `/report/${input.reportId}`,
-        created_by: session.profileId,
-      })
-      .select('id')
-      .single();
-
-    if (error || !notification) {
-      console.warn(`[report] 知らせを作れませんでした: ${error?.message ?? '不明なエラー'}`);
-      return;
-    }
-
-    const { error: targetError } = await supabase.from('notification_targets').insert(
-      input.memberIds.map((memberId) => ({
-        notification_id: notification.id,
-        team_member_id: memberId,
-      })),
-    );
-    if (targetError) {
-      console.warn(`[report] 知らせの宛先を作れませんでした: ${targetError.message}`);
-    }
+    const { error } = await sendNotification(session, {
+      type: input.fromPlayer ? 'report_question' : 'report_commented',
+      title: input.fromPlayer ? '日報に質問が届いています' : '日報にコメントが届きました',
+      body: input.body.slice(0, 200),
+      linkPath: `/report/${input.reportId}`,
+      memberIds: input.memberIds,
+    });
+    if (error) console.warn(`[report] 知らせを送れませんでした: ${error}`);
   } catch (unexpected) {
     console.warn(`[report] 知らせを送れませんでした: ${String(unexpected)}`);
   }
@@ -286,36 +268,16 @@ async function notifyReportAuthor(
   if (input.targetMemberId === session.teamMemberId) return;
 
   try {
-    const supabase = await createClient();
-
-    const { data: notification, error } = await supabase
-      .from('notifications')
-      .insert({
-        team_id: session.teamId,
-        notification_type: 'report_commented',
-        title: '日報にコメントが付きました',
-        body: `${input.reportDate}の日報: ${input.body.slice(0, 100)}`,
-        link_path: `/report/${input.reportId}`,
-        related_table: 'daily_reports',
-        related_id: input.reportId,
-        created_by: session.profileId,
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      console.warn(`[daily] コメントの通知を作れませんでした: ${error.message}`);
-      return;
-    }
-
-    const { error: targetError } = await supabase.from('notification_targets').insert({
-      notification_id: notification.id,
-      team_member_id: input.targetMemberId,
+    const { error } = await sendNotification(session, {
+      type: 'report_commented',
+      title: '日報にコメントが付きました',
+      body: `${input.reportDate}の日報: ${input.body.slice(0, 100)}`,
+      linkPath: `/report/${input.reportId}`,
+      relatedTable: 'daily_reports',
+      relatedId: input.reportId,
+      memberIds: [input.targetMemberId],
     });
-
-    if (targetError) {
-      console.warn(`[daily] コメントの通知の宛先を作れませんでした: ${targetError.message}`);
-    }
+    if (error) console.warn(`[daily] コメントの通知を送れませんでした: ${error}`);
   } catch (unexpected) {
     console.warn('[daily] コメントの通知で予期しない失敗', unexpected);
   }

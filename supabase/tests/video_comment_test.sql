@@ -271,4 +271,62 @@ select pg_temp.check('動画が見えなければ、全体公開のコメント�
   (select count(*) from public.video_comments), 0);
 
 reset role;
+-- -------------------------------------------------------------
+-- 通知が実際に飛ぶか（**選手として**）
+--
+-- 「動画にコメントしたのに通知が来ない」と報告があったので、
+-- 選手の権限で通知を作れるところまで通しで確かめる。
+-- ここが通れば、飛ばない理由は「誰も選ばなかった」だけになる。
+-- -------------------------------------------------------------
+-- 途中で reset role されているので、ここで戻す（RLS を効かせるため）
+set local role authenticated;
+select pg_temp.login('aaaa0000-0000-0000-0000-000000000001');
+
+insert into public.video_comments (id, team_id, video_id, author_id, at_seconds, body, visibility) values
+  ('eeee0000-0000-0000-0000-0000000000b1', 'bbbb0000-0000-0000-0000-00000000000a',
+   'eeee0000-0000-0000-0000-00000000000a', 'cccc0000-0000-0000-0000-000000000001',
+   60, 'ここを見てください', 'staff');
+
+insert into public.video_comment_mentions (team_id, video_comment_id, team_member_id) values
+  ('bbbb0000-0000-0000-0000-00000000000a', 'eeee0000-0000-0000-0000-0000000000b1',
+   'dddd0000-0000-0000-0000-000000000003');
+
+insert into public.notifications
+  (id, team_id, notification_type, title, body, link_path, related_table, related_id, created_by)
+values
+  ('99990000-0000-0000-0000-000000000001', 'bbbb0000-0000-0000-0000-00000000000a', 'video_mentioned',
+   '選手さんが動画に書き込みました', '練習 01:00 ここを見てください',
+   '/videos/eeee0000-0000-0000-0000-00000000000a',
+   'video_comments', 'eeee0000-0000-0000-0000-0000000000b1', 'cccc0000-0000-0000-0000-000000000001');
+
+insert into public.notification_targets (notification_id, team_member_id) values
+  ('99990000-0000-0000-0000-000000000001', 'dddd0000-0000-0000-0000-000000000003');
+
+/*
+  **作った本人には、自分の通知が見えない。**
+
+  notifications_select は「自分が宛先の通知だけ見える」。
+  作った人は宛先ではないので、行はあるのに 0 件に見える。
+
+  これが「動画にコメントしたのに通知が来ない」の原因だった。
+  アプリ側が insert のあとに .select('id').single() で読み返しており、
+  ここが 0 件で失敗して、**宛先を入れずに黙って返っていた**。
+
+  読み返さない作りにしたので、この見え方のままで正しい。
+  ここを 1 に変えたくなったら、それは読み返す作りに戻したということ。
+*/
+select pg_temp.check('**作った本人には、自分の通知は見えない**',
+  (select count(*) from public.notifications where id = '99990000-0000-0000-0000-000000000001'), 0);
+
+select pg_temp.check('それでも行は作られている（definer 越しに確かめる）',
+  (select case when app.owns_notification('99990000-0000-0000-0000-000000000001') then 1 else 0 end), 1);
+
+select pg_temp.login('aaaa0000-0000-0000-0000-000000000003');
+select pg_temp.check('**呼ばれたコーチに通知が届いている**',
+  (select count(*) from public.notifications where id = '99990000-0000-0000-0000-000000000001'), 1);
+
+select pg_temp.login('aaaa0000-0000-0000-0000-000000000002');
+select pg_temp.check('呼ばれていない選手には見えない',
+  (select count(*) from public.notifications where id = '99990000-0000-0000-0000-000000000001'), 0);
+
 rollback;

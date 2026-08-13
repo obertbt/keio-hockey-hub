@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { sendNotification } from '@/features/notifications/send';
 import type { AppSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
@@ -68,28 +69,16 @@ export async function postReportQuestion(
   if (mentionError) return { error: mentionError.message };
 
   // 呼ばれた人にだけ知らせる。全員に飛ばすと読まれなくなる（0024 と同じ）。
-  const { data: notification, error: notifyError } = await supabase
-    .from('notifications')
-    .insert({
-      team_id: session.teamId,
-      notification_type: 'report_question',
-      title: '日報に質問が届いています',
-      body: body.slice(0, 200),
-      link_path: `/report/${input.reportId}`,
-      created_by: session.profileId,
-    })
-    .select('id')
-    .single();
-
-  if (notifyError || !notification) return { error: notifyError?.message ?? '不明なエラー' };
-
-  const { error: targetError } = await supabase.from('notification_targets').insert(
-    input.memberIds.map((memberId) => ({
-      notification_id: notification.id,
-      team_member_id: memberId,
-    })),
-  );
-  if (targetError) return { error: targetError.message };
+  const { error: notifyError } = await sendNotification(session, {
+    type: 'report_question',
+    title: '日報に質問が届いています',
+    body: body.slice(0, 200),
+    linkPath: `/report/${input.reportId}`,
+    relatedTable: 'daily_reports',
+    relatedId: input.reportId,
+    memberIds: input.memberIds,
+  });
+  if (notifyError) return { error: notifyError };
 
   return {};
 }

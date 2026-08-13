@@ -48,10 +48,15 @@ export default async function VideoDetailPage({
   ]);
 
   // 0026: どの目標の話かを、書き込みと同じ1回の操作で残せるようにする。
+  // 大分類も渡す。目標だけ平らに並べると、どれがどの話か分からなくなる。
+  const categoryNameById = new Map(goalOverview.categories.map((category) => [category.id, category.name]));
   const pickableGoals = suggestGoalsForToday(goalOverview.items).map((entry) => ({
     id: entry.goal.id,
     name: entry.goal.name,
-    categoryName: null,
+    categoryName:
+      entry.goal.skill_category_id === null
+        ? null
+        : (categoryNameById.get(entry.goal.skill_category_id) ?? null),
   }));
 
   const startSeconds = t ? parseTimecodeToSeconds(t) : null;

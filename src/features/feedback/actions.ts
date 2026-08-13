@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { sendNotification } from '@/features/notifications/send';
 import { can, requirePermission, requireSession, type AppSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
@@ -437,31 +438,17 @@ async function notify(
 ): Promise<void> {
   if (!input.targetMemberId) return;
 
-  try {
-    const supabase = await createClient();
+  const { error } = await sendNotification(session, {
+    type: input.type,
+    title: input.title,
+    body: input.body,
+    linkPath: `/feedback/${input.requestId}`,
+    relatedTable: 'feedback_requests',
+    relatedId: input.requestId,
+    memberIds: [input.targetMemberId],
+  });
 
-    const { data: notification } = await supabase
-      .from('notifications')
-      .insert({
-        team_id: session.teamId,
-        notification_type: input.type,
-        title: input.title,
-        body: input.body,
-        link_path: `/feedback/${input.requestId}`,
-        related_table: 'feedback_requests',
-        related_id: input.requestId,
-        created_by: session.profileId,
-      })
-      .select('id')
-      .single();
-
-    if (notification) {
-      await supabase.from('notification_targets').insert({
-        notification_id: notification.id,
-        team_member_id: input.targetMemberId,
-      });
-    }
-  } catch {
-    // 通知は本筋ではない。落ちても回答や共有は成立させる。
-  }
+  // 通知は本筋ではない。落ちても回答や共有は成立させる。
+  // ただし黙って捨てない（0015 の教訓）。
+  if (error) console.warn(`[feedback] 知らせを送れませんでした: ${error}`);
 }

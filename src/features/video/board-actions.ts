@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { applyGoalTags } from '@/features/goals/tags';
+import { sendNotification } from '@/features/notifications/send';
 import { requireSession, type AppSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { formatSecondsToTimecode } from '@/lib/storage/validation';
@@ -88,9 +89,24 @@ export async function postVideoComment(
     return { error: `書き込めませんでした: ${error?.message ?? '不明なエラー'}` };
   }
 
+  /*
+    誰も選ばなかったときは、コーチ・スタッフに知らせる。
+
+    「呼ばれた人にだけ飛ばす」は、選手どうしでは正しい。
+    全員に飛ばすと読まれなくなる。
+    ただし**誰も呼ばなかった書き込みが誰にも届かない**のは行き過ぎだった。
+    遠慮する子ほど埋もれる、といういちばん困る形になる。
+
+    コーチは人数が少なく、返すのが役目なので、ここは飛ばしてよい。
+    選手には飛ばさない（それは全員通知と同じになる）。
+  */
+  const notifyMemberIds =
+    input.mention_member_ids.length > 0 ? input.mention_member_ids : await staffMemberIds(session);
+
   await addMentions(session, {
     commentId: comment.id,
     memberIds: input.mention_member_ids,
+    notifyMemberIds,
     videoId: video.id,
     videoTitle: video.title,
     body: input.body,
@@ -243,6 +259,24 @@ export async function deleteVideoComment(
 // 宛先と通知
 // -------------------------------------------------------------
 
+/**
+ * コーチ・スタッフの部員 id。
+ *
+ * 誰も呼ばなかった書き込みの届け先。自分は除く。
+ */
+async function staffMemberIds(session: AppSession): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('team_members')
+    .select('id')
+    .eq('team_id', session.teamId)
+    .eq('status', 'active')
+    .neq('role_code', 'player')
+    .is('deleted_at', null);
+
+  return (data ?? []).map((row) => row.id).filter((id) => id !== session.teamMemberId);
+}
+
 /** プロフィールから、このチームでの部員 id を引く。 */
 async function memberIdOf(profileId: string, session: AppSession): Promise<string | null> {
   const supabase = await createClient();
@@ -275,6 +309,7 @@ async function addMentions(
     atSeconds: number | null;
   },
 ): Promise<void> {
+  const mentioned = input.memberIds.length > 0;
   const supabase = await createClient();
 
   if (input.memberIds.length > 0) {
@@ -293,35 +328,21 @@ async function addMentions(
 
   const where = input.atSeconds === null ? '' : `${formatSecondsToTimecode(input.atSeconds)} `;
 
-  try {
-    const { data: notification, error } = await supabase
-      .from('notifications')
-      .insert({
-        team_id: session.teamId,
-        notification_type: 'video_mentioned',
-        title: `${session.displayName}さんが動画に書き込みました`,
-        body: `${input.videoTitle} ${where}${input.body.slice(0, 80)}`,
-        link_path: `/videos/${input.videoId}`,
-        related_table: 'video_comments',
-        related_id: input.commentId,
-        created_by: session.profileId,
-      })
-      .select('id')
-      .single();
+  const { error } = await sendNotification(session, {
+    // 名指しで呼ばれたときと、そうでないときを分ける。
+    // 受け取る側が「自分が呼ばれたのか」を見分けられるように。
+    type: mentioned ? 'video_mentioned' : 'video_commented',
+    title: mentioned
+      ? `${session.displayName}さんがあなたを呼んでいます`
+      : `${session.displayName}さんが動画に書き込みました`,
+    body: `${input.videoTitle} ${where}${input.body.slice(0, 80)}`,
+    linkPath: `/videos/${input.videoId}`,
+    relatedTable: 'video_comments',
+    relatedId: input.commentId,
+    memberIds: targets,
+  });
 
-    if (error || !notification) {
-      console.warn(`[video] 通知を作れませんでした: ${error?.message ?? '不明'}`);
-      return;
-    }
-
-    const { error: targetError } = await supabase.from('notification_targets').insert(
-      targets.map((memberId) => ({
-        notification_id: notification.id,
-        team_member_id: memberId,
-      })),
-    );
-    if (targetError) console.warn(`[video] 通知の宛先を作れませんでした: ${targetError.message}`);
-  } catch (unexpected) {
-    console.warn('[video] 通知で予期しない失敗', unexpected);
-  }
+  // 通知が作れなくても書き込み自体は成立させる。
+  // ただし**黙って捨てない**（0015 の教訓）。
+  if (error) console.warn(`[video] 知らせを送れませんでした: ${error}`);
 }
