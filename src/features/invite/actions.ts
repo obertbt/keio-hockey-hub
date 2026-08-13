@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { translateAuthError } from '@/features/auth/errors';
+import { currentAppUrl } from '@/lib/app-url';
 import { isStaff, requireSession } from '@/lib/auth/session';
-import { env } from '@/lib/env';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 
 import { createInvitationToken, expiresAtFrom, hashToken, invitationUrl, looksLikeToken } from './lib/token';
@@ -116,7 +116,9 @@ export async function createInvitation(_prevState: InviteState, formData: FormDa
 
   return {
     success: 'リンクを作りました。この画面を閉じると二度と表示できません。',
-    link: invitationUrl(env.NEXT_PUBLIC_APP_URL, token),
+    // 設定ではなく、いま開いているアドレスから組み立てる。
+    // 設定漏れで localhost のリンクを配ってしまったため（実際に起きた）。
+    link: invitationUrl(await currentAppUrl(), token),
   };
 }
 
