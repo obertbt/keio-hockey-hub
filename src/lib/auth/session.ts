@@ -133,6 +133,20 @@ export async function requirePermission(permission: Permission): Promise<AppSess
   return session;
 }
 
+/**
+ * スタッフ（管理者・コーチ・マネージャー）だけの画面で使う。
+ *
+ * 特定の権限ではなく立場で決まるもの（監査ログ、チャンネル連携）に使う。
+ * RLS 側も同じ条件（app.is_staff）で守っている。
+ */
+export async function requireStaff(): Promise<AppSession> {
+  const session = await requireSession();
+  if (!isStaffRole(session.role)) {
+    redirect('/today?denied=' + encodeURIComponent('スタッフ限定'));
+  }
+  return session;
+}
+
 /** 画面の出し分け用。リダイレクトはしない。 */
 export function can(session: AppSession, permission: Permission): boolean {
   return hasPermission({ role: session.role, overrides: session.overrides }, permission);

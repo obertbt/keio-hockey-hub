@@ -55,6 +55,7 @@ export const MAIN_NAV: NavLink[] = [
   { href: '/admin/export', label: '書き出し', icon: 'database' },
   { href: '/admin/import', label: 'データ移行', icon: 'clipboard', permission: 'import.execute' },
   { href: '/admin/storage', label: '保存容量', icon: 'storage', permission: 'storage.manage' },
+  { href: '/admin/youtube', label: 'チャンネル連携', icon: 'video', staffOnly: true },
   { href: '/admin/audit', label: '操作の記録', icon: 'scroll', staffOnly: true },
   { href: '/settings', label: '設定', icon: 'settings', bottom: true },
 ];

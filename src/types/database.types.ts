@@ -286,6 +286,22 @@ export type VideoCommentMentionRow = {
   created_at: string;
 };
 
+/** チャンネル連携（0025）。鍵は service role からしか触れない。 */
+export type YoutubeConnectionRow = {
+  id: string;
+  team_id: string;
+  channel_id: string;
+  channel_title: string | null;
+  uploads_playlist_id: string | null;
+  refresh_token: string;
+  connected_by: string;
+  connected_at: string;
+  last_synced_at: string | null;
+  last_result: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TrainingRecordRow = {
   id: string;
   team_id: string;
@@ -349,6 +365,8 @@ export type VideoRow = {
   event_id: string | null;
   visibility: MediaVisibility;
   created_by: string;
+  /** チャンネルから自動で取り込んだものか（0025）。 */
+  imported_from_channel: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -884,6 +902,10 @@ export type Database = {
         ReportFeedbackRow,
         Exclude<keyof ReportFeedbackRow, 'team_id' | 'daily_report_id' | 'author_id' | 'body'>
       >;
+      youtube_connections: TableShape<
+        YoutubeConnectionRow,
+        Exclude<keyof YoutubeConnectionRow, 'team_id' | 'channel_id' | 'refresh_token' | 'connected_by'>
+      >;
       video_comments: TableShape<
         VideoCommentRow,
         Exclude<keyof VideoCommentRow, 'team_id' | 'video_id' | 'author_id' | 'body'>
@@ -1037,6 +1059,17 @@ export type Database = {
       soft_delete_skill: { Args: { p_skill_id: string }; Returns: undefined };
       soft_delete_report_feedback: { Args: { p_feedback_id: string }; Returns: undefined };
       soft_delete_video_comment: { Args: { p_comment_id: string }; Returns: undefined };
+      /** 画面に出すぶんだけ。鍵は返らない（0025）。 */
+      youtube_connection_status: {
+        Args: { p_team_id: string };
+        Returns: {
+          connected: boolean;
+          channel_title: string | null;
+          connected_at: string | null;
+          last_synced_at: string | null;
+          last_result: string | null;
+        }[];
+      };
       /** 消したものの一覧と復元（0020）。通常の SELECT では引けないため。 */
       list_deleted_items: {
         Args: { p_team_id: string };
