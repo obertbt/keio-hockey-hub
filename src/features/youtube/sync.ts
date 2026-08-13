@@ -73,7 +73,19 @@ export async function syncChannel(target: {
       if (error) throw new Error(`情報を補えませんでした: ${error.message}`);
     }
 
-    const message = describePlan(plan);
+    let message = describePlan(plan);
+
+    // 1本も見つからないときは、たいてい「つなぐチャンネルを選び間違えた」。
+    // ブランドアカウントを持っていると、許可の画面で
+    // 個人のチャンネルと部のチャンネルの選択が出る。
+    // ここで黙って「0本」とだけ返すと、原因にたどり着けない。
+    if (fetched.length === 0) {
+      message =
+        `「${connection.channelTitle ?? 'このチャンネル'}」に動画が見つかりませんでした。` +
+        'つなぐチャンネルを間違えている可能性があります。' +
+        '一度つなぎを解いて、Google の画面で部のチャンネルを選び直してください。';
+    }
+
     await recordSyncResult(session.teamId, message);
 
     return { message };
