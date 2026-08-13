@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 
 import { Card, CardHeader, EmptyState } from '@/components/ui/card';
 import { R2Player } from '@/features/upload/components/r2-player';
+import { suggestGoalsForToday } from '@/features/goals/lib/goals';
+import { getGoalOverview } from '@/features/goals/queries';
 import { listBoard, listMentionCandidates } from '@/features/video/board-queries';
 import { VideoBoard, VideoBoardForm, type BoardItem } from '@/features/video/components/video-board';
 import { VideoVisibilityControl } from '@/features/video/components/video-visibility';
@@ -38,11 +40,19 @@ export default async function VideoDetailPage({
   const video = await getVideo(session, id);
   if (!video) notFound();
 
-  const [clips, board, candidates] = await Promise.all([
+  const [clips, board, candidates, goalOverview] = await Promise.all([
     listClips(session, id),
     listBoard(id),
     listMentionCandidates(session),
+    getGoalOverview(session),
   ]);
+
+  // 0026: どの目標の話かを、書き込みと同じ1回の操作で残せるようにする。
+  const pickableGoals = suggestGoalsForToday(goalOverview.items).map((entry) => ({
+    id: entry.goal.id,
+    name: entry.goal.name,
+    categoryName: null,
+  }));
 
   const startSeconds = t ? parseTimecodeToSeconds(t) : null;
 
@@ -114,7 +124,7 @@ export default async function VideoDetailPage({
 
       <Card>
         <CardHeader title="気づいたことを書く" description="ひとことで構いません。" />
-        <VideoBoardForm videoId={video.id} candidates={candidates} />
+        <VideoBoardForm videoId={video.id} candidates={candidates} goals={pickableGoals} />
       </Card>
 
       {/*

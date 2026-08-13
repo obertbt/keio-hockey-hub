@@ -286,6 +286,40 @@ export type VideoCommentMentionRow = {
   created_at: string;
 };
 
+/**
+ * 中目標（0026）。大分類はチームで固定、これは各自が自分の言葉で書く。
+ *
+ * 触れるのは本人だけ。コーチも直せない。
+ */
+export type MemberGoalRow = {
+  id: string;
+  team_id: string;
+  team_member_id: string;
+  /** 大分類。決めずに書き始められるので null 可。あとから移せる。 */
+  skill_category_id: string | null;
+  name: string;
+  /** どうなったら「できた」と言えるか。本人の言葉で。 */
+  note: string | null;
+  /** 本人が押す。承認ではない。 */
+  achieved_at: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+/** 中目標を、日報や動画の書き込みに結び付けるタグ（0026）。 */
+export type GoalTagRow = {
+  id: string;
+  team_id: string;
+  member_goal_id: string;
+  target_type: 'daily_report' | 'video_comment';
+  daily_report_id: string | null;
+  video_comment_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
 /** チャンネル連携（0025）。鍵は service role からしか触れない。 */
 export type YoutubeConnectionRow = {
   id: string;
@@ -914,6 +948,14 @@ export type Database = {
         VideoCommentMentionRow,
         Exclude<keyof VideoCommentMentionRow, 'team_id' | 'video_comment_id' | 'team_member_id'>
       >;
+      member_goals: TableShape<
+        MemberGoalRow,
+        Exclude<keyof MemberGoalRow, 'team_id' | 'team_member_id' | 'name'>
+      >;
+      goal_tags: TableShape<
+        GoalTagRow,
+        Exclude<keyof GoalTagRow, 'team_id' | 'member_goal_id' | 'target_type' | 'created_by'>
+      >;
       training_records: TableShape<
         TrainingRecordRow,
         Exclude<keyof TrainingRecordRow, 'team_id' | 'team_member_id' | 'performed_on' | 'training_type'>
@@ -1059,6 +1101,18 @@ export type Database = {
       soft_delete_skill: { Args: { p_skill_id: string }; Returns: undefined };
       soft_delete_report_feedback: { Args: { p_feedback_id: string }; Returns: undefined };
       soft_delete_video_comment: { Args: { p_comment_id: string }; Returns: undefined };
+      /** 中目標（0026）。消すのも、まとめるのも本人だけ。 */
+      soft_delete_member_goal: { Args: { p_goal_id: string }; Returns: undefined };
+      /** 付いていたタグを移してから畳む。移した件数を返す。 */
+      merge_member_goal: {
+        Args: { p_from_goal_id: string; p_into_goal_id: string };
+        Returns: number;
+      };
+      /** その目標に何回向き合ったか。承認の数ではなく、これを積み上がりとする。 */
+      member_goal_activity: {
+        Args: { p_team_member_id: string };
+        Returns: { member_goal_id: string; tag_count: number; last_tagged_at: string | null }[];
+      };
       /** 画面に出すぶんだけ。鍵は返らない（0025）。 */
       youtube_connection_status: {
         Args: { p_team_id: string };

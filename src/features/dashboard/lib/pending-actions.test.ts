@@ -147,34 +147,36 @@ describe('試合の日', () => {
   });
 });
 
-describe('差し戻されたスキル申請（32章）', () => {
-  it('差し戻されていたら、やることに出す', () => {
-    const actions = pendingActions(state({ sentBackSkillCount: 2 }));
-    const target = actions.find((action) => action.key === 'skill_sent_back');
+describe('手が付いていない目標（0026）', () => {
+  it('書いたのに記録に付けていないものを、やることに出す', () => {
+    const actions = pendingActions(state({ untouchedGoalCount: 2 }));
+    const target = actions.find((action) => action.key === 'goal_untouched');
 
-    expect(target?.label).toBe('スキル申請に根拠を足す（2件）');
-    expect(target?.href).toBe('/skills/applications');
+    expect(target?.label).toBe('まだ記録に付けていない目標を見る（2件）');
+    expect(target?.href).toBe('/goals');
   });
 
   it('0件なら出さない', () => {
-    const actions = pendingActions(state({ sentBackSkillCount: 0 }));
-    expect(actions.map((action) => action.key)).not.toContain('skill_sent_back');
+    const actions = pendingActions(state({ untouchedGoalCount: 0 }));
+    expect(actions.map((action) => action.key)).not.toContain('goal_untouched');
   });
 
-  it('項目が無くても落ちない（Phase 8 より前のデータ）', () => {
-    const actions = pendingActions(state({ sentBackSkillCount: undefined }));
-    expect(actions.map((action) => action.key)).not.toContain('skill_sent_back');
+  it('項目が無くても落ちない（0026 より前のデータ）', () => {
+    const actions = pendingActions(state({ untouchedGoalCount: undefined }));
+    expect(actions.map((action) => action.key)).not.toContain('goal_untouched');
   });
 
-  it('日報より先に出す。コーチが返事をして待っているため', () => {
-    const actions = pendingActions(state({ sentBackSkillCount: 1 }));
+  it('**日報より後ろに置く。急ぐことではない**', () => {
+    // 申請の差し戻しは「コーチが返事をして待っている」ので前に出していた。
+    // こちらは自分のためのものなので、その日の記録を先に済ませてよい。
+    const actions = pendingActions(state({ untouchedGoalCount: 1 }));
     const keys = actions.map((action) => action.key);
 
-    expect(keys.indexOf('skill_sent_back')).toBeLessThan(keys.indexOf('report'));
+    expect(keys.indexOf('goal_untouched')).toBeGreaterThan(keys.indexOf('report'));
   });
 
-  it('予定が無い日でも出す。スキルは練習の有無と関係ない', () => {
-    const actions = pendingActions(state({ events: [], sentBackSkillCount: 1 }));
-    expect(actions.map((action) => action.key)).toContain('skill_sent_back');
+  it('予定が無い日でも出す。目標は練習の有無と関係ない', () => {
+    const actions = pendingActions(state({ events: [], untouchedGoalCount: 1 }));
+    expect(actions.map((action) => action.key)).toContain('goal_untouched');
   });
 });

@@ -723,6 +723,55 @@ Server Action がそこを必ず通します（テストは `visibility.test.ts`
 画面側も、押せないボタンを出して断るのではなく**最初から出しません**。
 断られる体験は「この人は自分を信用していない」という読み方をされます。
 
+## 17-3. 自分の目標を、人に書き換えられない（0026）
+
+中目標は選手が自分の言葉で書くものです。
+**触れるのは本人だけ。コーチも直せません。**
+
+| 誰が             | 見る  | 直す・消す | 「できた」を押す |
+| ---------------- | ----- | ---------- | ---------------- |
+| 本人             | ○     | ○          | ○                |
+| コーチ・スタッフ | ○     | **×**      | **×**            |
+| ほかの選手       | **×** | ×          | ×                |
+
+スタッフに「見る」を許しているのは、何に取り組んでいるかを知らずに返す言葉が、
+その人に向いたものにならないためです（3章の5）。
+一方で「直す」を許すと、自分の目標が自分のものでなくなります。
+
+```sql
+create policy member_goals_own_write on public.member_goals
+  for all to authenticated
+  using (deleted_at is null and app.is_own_member(team_member_id))
+  with check (app.is_team_member(team_id) and app.is_own_member(team_member_id));
+```
+
+`for all` なので、`app.has_permission('report.view_all')` を持つスタッフでも
+更新には入ってきません。読むほうは別のポリシー（`member_goals_select`）が担います。
+**読む条件と書く条件を、意識して別々に書いています**（12章の教訓）。
+
+### タグは「自分の目標だけ」
+
+`goal_tags` は、他人の目標を自分の記録に付けられてはいけません。
+RLS だけでは「その目標の持ち主が自分か」を表現しづらいので、
+トリガ（`app.validate_goal_tag`）で所有者を見ています。
+
+```sql
+select profile_id into v_owner from public.team_members where id = v_goal.team_member_id;
+if v_owner is distinct from app.current_profile_id() then
+  raise exception '自分の目標だけ付けられます';
+end if;
+```
+
+これで service role を含め、どの経路から書いても守られます（8章と同じ形）。
+
+### 承認をやめたのは、安全のためでもある
+
+「できた」をコーチが承認する形だと、承認の記録が**評価**になります。
+評価は残り、あとから読み返され、進路や起用の話に使われ得ます。
+そこまで背負わせるつもりの無い機能でした。
+
+本人が押すだけにしたことで、その重さが消えています。
+
 ## 18. 書き出し（Phase 9）
 
 記録は CSV で取り出せます（3章の12: 過去の資産を失わない）。

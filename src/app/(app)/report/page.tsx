@@ -11,6 +11,8 @@ import {
   getReportFor,
   listMyReports,
 } from '@/features/daily/queries';
+import { suggestGoalsForToday } from '@/features/goals/lib/goals';
+import { getGoalOverview, listTagsForReports } from '@/features/goals/queries';
 import { requireSession } from '@/lib/auth/session';
 import { formatDateLabel, todayInTokyo } from '@/lib/datetime';
 import { REPORT_VISIBILITY_LABELS } from '@/lib/labels';
@@ -34,6 +36,21 @@ export default async function ReportPage() {
   // 「返事が来ている」を一覧で分かるようにする（16章）
   const commentCounts = await countCommentsByReport(past.map((report) => report.id));
   const todayComments = existing ? (commentCounts.get(existing.id) ?? 0) : 0;
+
+  // 0026: 今日はどの目標に取り組んだか。日報と同じ1回の操作で残す。
+  const overview = await getGoalOverview(session);
+  const categoryNameById = new Map(overview.categories.map((category) => [category.id, category.name]));
+  const pickableGoals = suggestGoalsForToday(overview.items).map((item) => ({
+    id: item.goal.id,
+    name: item.goal.name,
+    categoryName:
+      item.goal.skill_category_id === null
+        ? null
+        : (categoryNameById.get(item.goal.skill_category_id) ?? null),
+  }));
+
+  const existingTags = await listTagsForReports(existing ? [existing.id] : []);
+  const selectedGoalIds = (existingTags.get(existing?.id ?? '') ?? []).map((tag) => tag.goalId);
 
   return (
     <div className="space-y-4">
@@ -66,6 +83,8 @@ export default async function ReportPage() {
           eventId={event?.id ?? null}
           existing={existing}
           personalGoal={goal?.goal ?? null}
+          goals={pickableGoals}
+          selectedGoalIds={selectedGoalIds}
         />
       </Card>
 

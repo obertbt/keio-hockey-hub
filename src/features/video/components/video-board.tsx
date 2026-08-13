@@ -8,6 +8,7 @@ import { Lock, MessageSquare, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FormMessage, TextArea } from '@/components/ui/field';
 import { TimecodeInput } from '@/components/ui/timecode-input';
+import { GoalPicker, type PickableGoal } from '@/features/goals/components/goal-picker';
 import {
   deleteVideoComment,
   postVideoComment,
@@ -82,7 +83,16 @@ function MentionPicker({ candidates }: { candidates: MentionCandidate[] }) {
 }
 
 /** 書き込む欄。 */
-export function VideoBoardForm({ videoId, candidates }: { videoId: string; candidates: MentionCandidate[] }) {
+export function VideoBoardForm({
+  videoId,
+  candidates,
+  goals = [],
+}: {
+  videoId: string;
+  candidates: MentionCandidate[];
+  /** 選べる目標（0026）。取り組み中のものだけ。 */
+  goals?: PickableGoal[];
+}) {
   const [state, formAction] = useActionState<BoardActionState, FormData>(postVideoComment, {});
   const [openToTeam, setOpenToTeam] = useState(false);
 
@@ -113,6 +123,13 @@ export function VideoBoardForm({ videoId, candidates }: { videoId: string; candi
       </Field>
 
       <MentionPicker candidates={candidates} />
+
+      {/* 0026: この書き込みが、どの目標の話かを残す。あとから振り替えられる。 */}
+      <GoalPicker
+        goals={goals}
+        label="どの目標の話か"
+        hint="選ばなくても書けます。選ぶと、その目標に積み上がります。"
+      />
 
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input

@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState } from '@/components/ui/card';
 import { getCoachDashboard, getPlayerDashboard } from '@/features/dashboard/queries';
 import { pendingActions, todayHeadline } from '@/features/dashboard/lib/pending-actions';
-import { ProgressBar } from '@/features/skills/components/progress-bar';
 import { isStaff, requireSession } from '@/lib/auth/session';
 import { formatDateLabel, formatTimeLabel } from '@/lib/datetime';
 import { formatSecondsToTimecode } from '@/lib/storage/validation';
@@ -149,23 +148,38 @@ async function PlayerToday() {
         </Link>
       ) : null}
 
-      {/* 31章: 積み上がったものが見えることが、続ける支えになる */}
+      {/*
+        0026: 到達度（%）をやめた。
+        承認の数を追いかけると、承認されにくい目標を書かなくなる。
+        代わりに「何回向き合ったか」を出す。誰の判断も待たずに増える。
+      */}
       <Card>
         <CardHeader
-          title="スキルの到達度"
+          title="自分の目標"
           icon={<Award size={16} aria-hidden />}
           action={
-            <Link href="/skills" className="text-keio-700 dark:text-keio-300 text-sm underline">
+            <Link href="/goals" className="text-keio-700 dark:text-keio-300 text-sm underline">
               一覧
             </Link>
           }
         />
-        <ProgressBar
-          percent={data.skillProgress.percent}
-          approved={data.skillProgress.approved}
-          total={data.skillProgress.total}
-          label="スキルの到達度"
-        />
+        {data.goalSummary.total === 0 ? (
+          <EmptyState>
+            まだ目標がありません。
+            <Link href="/goals" className="ml-1 underline">
+              自分の言葉で書く
+            </Link>
+          </EmptyState>
+        ) : (
+          <>
+            <p className="text-sm">
+              取り組み中 {data.goalSummary.active}件 / できるようになった {data.goalSummary.achieved}件
+            </p>
+            <p className="mt-1 text-sm text-[--color-muted]">
+              これまで {data.goalSummary.totalTags}回、記録に付けました。
+            </p>
+          </>
+        )}
       </Card>
 
       <Card>
@@ -352,23 +366,11 @@ async function CoachToday() {
         ) : null}
       </Card>
 
-      {/* 32章: スキル申請も、放っておくと選手を待たせる */}
-      <Card>
-        <CardHeader
-          title="スキル申請"
-          icon={<Award size={16} aria-hidden />}
-          action={
-            <Link href="/skills/applications" className="text-keio-700 dark:text-keio-300 text-sm underline">
-              一覧
-            </Link>
-          }
-        />
-        {data.awaitingSkillCount === 0 ? (
-          <EmptyState>審査待ちの申請はありません。</EmptyState>
-        ) : (
-          <p className="text-sm">審査待ち {data.awaitingSkillCount} 件</p>
-        )}
-      </Card>
+      {/*
+        0026: スキル申請の審査をやめたので、この枠は無くなった。
+        コーチが待たせるものが1つ減っている。
+        選手が何に取り組んでいるかは、名簿からその人を開けば見られる。
+      */}
 
       <Card>
         <CardHeader

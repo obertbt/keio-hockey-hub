@@ -103,6 +103,7 @@ run_test "日報コメントのテスト" supabase/tests/report_feedback_test.sq
 run_test "提出状況のテスト" supabase/tests/submission_status_test.sql
 run_test "動画掲示板のテスト" supabase/tests/video_comment_test.sql
 run_test "チャンネル連携のテスト" supabase/tests/youtube_test.sql
+run_test "中目標とタグのテスト" supabase/tests/member_goal_test.sql
 
 echo
 if [[ "$FAILED" != "0" ]]; then

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { applyGoalTags } from '@/features/goals/tags';
 import { requireSession, type AppSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { formatSecondsToTimecode } from '@/lib/storage/validation';
@@ -96,9 +97,22 @@ export async function postVideoComment(
     atSeconds: input.at_seconds,
   });
 
+  // 0026: どの目標の話かを、書き込みと同じ1回の操作で残す。
+  // 付かなくても書き込み自体は成立させる（0015 の教訓）。
+  const goalIds = formData.getAll('goal_ids').filter((value): value is string => typeof value === 'string');
+  if (goalIds.length > 0) {
+    const tagResult = await applyGoalTags(session, {
+      targetType: 'video_comment',
+      targetId: comment.id,
+      goalIds,
+    });
+    if (tagResult.error) console.warn(`[video] 目標を付けられませんでした: ${tagResult.error}`);
+  }
+
   revalidatePath(`/videos/${video.id}`);
   revalidatePath('/videos');
   revalidatePath('/today');
+  revalidatePath('/goals');
 
   return { success: '書き込みました。' };
 }

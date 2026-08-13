@@ -45,12 +45,17 @@ export const MAIN_NAV: NavLink[] = [
   // 0024 で掲示板に一本化した。新しく質問は作らないが、
   // これまでのやり取りは残っているので、辿れるようにしておく。
   { href: '/feedback', label: 'これまでの質問', icon: 'message' },
-  { href: '/skills', label: 'スキル', icon: 'award' },
+  // 0026 で「大→中→小 + 申請 + 承認」をやめ、
+  // 「大分類（固定） + 中目標（各自が書く）」の2段階にした。
+  // 承認の手続きが無いので、選手が見るのはここだけでよい。
+  { href: '/goals', label: '目標', icon: 'award' },
   { href: '/measurements', label: '測定', icon: 'ruler' },
   { href: '/notifications', label: 'お知らせ', icon: 'bell' },
   { href: '/members', label: '名簿', icon: 'users' },
   { href: '/admin/invitations', label: '招待', icon: 'invite', staffOnly: true },
-  { href: '/admin/skills', label: 'スキル定義', icon: 'checks', permission: 'skill.review' },
+  // 0026 以降、ここで作るのは**大分類だけ**。
+  // その下は各自が書くので、コーチが全員ぶんを用意する必要はない。
+  { href: '/admin/skills', label: '大分類', icon: 'checks', permission: 'skill.review' },
   { href: '/trash', label: '消したもの', icon: 'trash' },
   { href: '/admin/export', label: '書き出し', icon: 'database' },
   { href: '/admin/import', label: 'データ移行', icon: 'clipboard', permission: 'import.execute' },

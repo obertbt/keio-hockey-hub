@@ -9,6 +9,7 @@ import { Field, FormMessage, Select, TextArea } from '@/components/ui/field';
 import { RatingField } from '@/components/ui/rating';
 import { saveDailyReport, type DailyActionState } from '@/features/daily/actions';
 import { describeDisclosure } from '@/features/daily/lib/disclosure';
+import { GoalPicker, type PickableGoal } from '@/features/goals/components/goal-picker';
 import { REPORT_VISIBILITY_LABELS } from '@/lib/labels';
 import type { DailyReportRow, ReportVisibility } from '@/types/database.types';
 
@@ -40,12 +41,18 @@ export function ReportForm({
   eventId,
   existing,
   personalGoal,
+  goals,
+  selectedGoalIds,
 }: {
   date: string;
   eventId: string | null;
   existing: DailyReportRow | null;
   /** 今日の個人目標。最初から入れておく。 */
   personalGoal: string | null;
+  /** 選べる目標（0026）。取り組み中のものだけ。 */
+  goals: PickableGoal[];
+  /** すでに付いている目標。 */
+  selectedGoalIds: string[];
 }) {
   const [state, action] = useActionState<DailyActionState, FormData>(saveDailyReport, {});
   const [showDetail, setShowDetail] = useState(
@@ -103,6 +110,12 @@ export function ReportForm({
       <Field label="次回取り組むこと" htmlFor="next_action" hint="次の練習の目標にそのまま使えます">
         <TextArea id="next_action" name="next_action" rows={2} defaultValue={existing?.next_action ?? ''} />
       </Field>
+
+      {/*
+        0026: 「今日はどの目標に取り組んだか」を、日報と同じ1回の操作で残す。
+        別の画面へ行かせると、まず付けてもらえない。
+      */}
+      <GoalPicker goals={goals} selectedIds={selectedGoalIds} />
 
       {/* --- 深掘り。何かあった日だけ開く --- */}
       <div className="rounded-lg border border-[--color-border]">

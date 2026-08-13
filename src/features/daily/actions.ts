@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { applyGoalTags } from '@/features/goals/tags';
 import { requireSession } from '@/lib/auth/session';
 import { todayInTokyo } from '@/lib/datetime';
 import { createClient } from '@/lib/supabase/server';
@@ -244,19 +245,38 @@ export async function saveDailyReport(
     submitted_at: input.status === 'submitted' ? (existing?.submitted_at ?? new Date().toISOString()) : null,
   };
 
-  const { error } = existing
-    ? await supabase.from('daily_reports').update(values).eq('id', existing.id)
-    : await supabase.from('daily_reports').insert({
-        team_id: session.teamId,
-        team_member_id: session.teamMemberId,
-        report_date: input.report_date,
-        ...values,
-      });
+  const { data: saved, error } = existing
+    ? await supabase.from('daily_reports').update(values).eq('id', existing.id).select('id').maybeSingle()
+    : await supabase
+        .from('daily_reports')
+        .insert({
+          team_id: session.teamId,
+          team_member_id: session.teamMemberId,
+          report_date: input.report_date,
+          ...values,
+        })
+        .select('id')
+        .maybeSingle();
 
   if (error) return { error: `保存できませんでした: ${error.message}` };
 
+  // 0026: 「今日はどの目標に取り組んだか」を、日報と同じ1回の操作で残す。
+  // 別の画面に行かせると、まず付けてもらえない。
+  const reportId = saved?.id ?? existing?.id;
+  if (reportId) {
+    const tagResult = await applyGoalTags(session, {
+      targetType: 'daily_report',
+      targetId: reportId,
+      goalIds: formData.getAll('goal_ids').filter((value): value is string => typeof value === 'string'),
+    });
+    // 日報そのものは保存できている。目標が付かなかっただけで
+    // 「保存できませんでした」と出すと、書いたものが消えたように見える。
+    if (tagResult.error) console.warn(`[daily] 目標を付けられませんでした: ${tagResult.error}`);
+  }
+
   revalidatePath('/today');
   revalidatePath('/report');
+  revalidatePath('/goals');
 
   return {
     success: input.status === 'submitted' ? '日報を提出しました。' : '下書きを保存しました。',

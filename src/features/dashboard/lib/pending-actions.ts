@@ -8,7 +8,7 @@ import type { EventType } from '@/types/database.types';
  */
 
 export type ActionKey =
-  'condition' | 'goal' | 'report' | 'training' | 'feedback_unread' | 'feedback_pending' | 'skill_sent_back';
+  'condition' | 'goal' | 'report' | 'training' | 'feedback_unread' | 'feedback_pending' | 'goal_untouched';
 
 export interface PendingAction {
   key: ActionKey;
@@ -39,8 +39,15 @@ export interface TodayState {
   unreadFeedbackCount: number;
   /** 選手が出した質問のうち、まだ回答が来ていない数。 */
   waitingFeedbackCount: number;
-  /** コーチから差し戻されて、まだ出し直していないスキル申請の数（32章）。 */
-  sentBackSkillCount?: number;
+  /**
+   * 書いただけで、まだ一度も記録に付けていない目標の数（0026）。
+   *
+   * 申請の差し戻しの代わりに置いた。
+   * あちらは「コーチが返事を待たせている」だったが、
+   * こちらは**自分で書いたのに手が付いていない**もの。
+   * 責めるためではなく、思い出すきっかけとして出す。
+   */
+  untouchedGoalCount?: number;
 }
 
 /** 記録を求めるイベントかどうか。オフやミーティングでは日報を迫らない。 */
@@ -138,14 +145,14 @@ export function pendingActions(state: TodayState): PendingAction[] {
     });
   }
 
-  // 差し戻された申請は、放っておくと止まったままになる。
-  // コーチは返事をして待っているので、日報より前に出す。
-  if ((state.sentBackSkillCount ?? 0) > 0) {
+  // 書いたのに手が付いていない目標。
+  // 急ぐことではないので、日報などの後ろに置く。
+  if ((state.untouchedGoalCount ?? 0) > 0) {
     actions.push({
-      key: 'skill_sent_back',
-      label: `スキル申請に根拠を足す（${state.sentBackSkillCount}件）`,
-      href: '/skills/applications',
-      priority: 27,
+      key: 'goal_untouched',
+      label: `まだ記録に付けていない目標を見る（${state.untouchedGoalCount}件）`,
+      href: '/goals',
+      priority: 90,
     });
   }
 
