@@ -96,9 +96,10 @@ describe('動画データへの変換', () => {
     expect(draft.recorded_at).toBe('2026-08-12T09:00:00Z');
   });
 
-  it('**取り込んだものは、まずコーチとスタッフまで**', () => {
-    // 部の映像がいきなり全員に開くのは、こちらで決めることではない。
-    expect(toVideoDraft(video()).visibility).toBe('private_staff');
+  it('**取り込んだものは部内全員に見せる**', () => {
+    // その動画は YouTube 側で既に部員が見られる。
+    // こちらだけ狭くしても隠したことにはならず、「見たいのに見えない」を作るだけ。
+    expect(toVideoDraft(video()).visibility).toBe('team');
   });
 
   it('題が空でも作れる形にする', () => {

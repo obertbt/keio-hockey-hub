@@ -34,8 +34,18 @@ export interface VideoDraft {
   duration_seconds: number | null;
   recorded_at: string | null;
   thumbnail_url: string | null;
-  /** 取り込んだものは、まずコーチとスタッフまで。 */
-  visibility: 'private_staff';
+  /**
+   * 取り込んだものは部内全員に見せる。
+   *
+   * 最初はコーチとスタッフまでにしていたが、
+   * **その動画は YouTube 側で既に部員全員が見られる**。
+   * こちらだけ狭くしても、隠したことにはならず、
+   * 「見たいのに見えない」を作るだけだった。
+   *
+   * 自分で撮って上げた切り抜き（22章）は別の話。
+   * あちらは本人が決める。
+   */
+  visibility: 'team';
 }
 
 /**
@@ -84,9 +94,8 @@ export function toVideoDraft(video: YoutubeVideo): VideoDraft {
     duration_seconds: parseIso8601Duration(video.duration),
     recorded_at: video.publishedAt,
     thumbnail_url: video.thumbnailUrl,
-    // 取り込んだ時点では、まずコーチとスタッフまで。
-    // 部の映像がいきなり全員に開くのは、こちらで決めることではない。
-    visibility: 'private_staff',
+    // YouTube 側で既に部員が見られるものを、こちらだけ狭くしない。
+    visibility: 'team',
   };
 }
 
