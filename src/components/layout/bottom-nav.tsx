@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { NavIcon } from '@/components/layout/nav-icon';
 import type { NavLink } from '@/components/layout/nav-links';
 import { cn } from '@/lib/utils/cn';
 
@@ -21,7 +22,6 @@ export function BottomNav({ links }: { links: NavLink[] }) {
       <ul className="flex">
         {links.map((link) => {
           const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
-          const Icon = link.icon;
           return (
             <li key={link.href} className="flex-1">
               <Link
@@ -32,7 +32,7 @@ export function BottomNav({ links }: { links: NavLink[] }) {
                   active ? 'text-keio-700 dark:text-keio-200' : 'text-[--color-muted]',
                 )}
               >
-                <Icon size={20} aria-hidden />
+                <NavIcon name={link.icon} size={20} />
                 {link.label}
               </Link>
             </li>

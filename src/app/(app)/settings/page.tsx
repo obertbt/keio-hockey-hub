@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
+import { NavIcon } from '@/components/layout/nav-icon';
 import { MAIN_NAV } from '@/components/layout/nav-links';
 import { ROLE_LABELS, PERMISSION_LABELS, PERMISSIONS } from '@/lib/auth/permissions';
 import { can, requireSession } from '@/lib/auth/session';
@@ -23,14 +24,13 @@ export default async function SettingsPage() {
         <ul className="space-y-2">
           {MAIN_NAV.filter((link) => !link.bottom && (!link.permission || can(session, link.permission))).map(
             (link) => {
-              const Icon = link.icon;
               return (
                 <li key={link.href}>
                   <Link
                     href={link.href}
                     className="flex min-h-12 items-center gap-3 rounded-lg border border-[--color-border] px-3 text-sm"
                   >
-                    <Icon size={18} aria-hidden />
+                    <NavIcon name={link.icon} size={18} />
                     {link.label}
                   </Link>
                 </li>

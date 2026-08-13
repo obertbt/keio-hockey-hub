@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { NavIcon } from '@/components/layout/nav-icon';
 import type { NavLink } from '@/components/layout/nav-links';
 import { cn } from '@/lib/utils/cn';
 
@@ -18,7 +19,6 @@ export function SideNav({ links, appName }: { links: NavLink[]; appName: string 
           <ul className="space-y-1">
             {links.map((link) => {
               const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
-              const Icon = link.icon;
               return (
                 <li key={link.href}>
                   <Link
@@ -31,7 +31,7 @@ export function SideNav({ links, appName }: { links: NavLink[]; appName: string 
                         : 'hover:bg-keio-100/60 text-[--color-muted]',
                     )}
                   >
-                    <Icon size={18} aria-hidden />
+                    <NavIcon name={link.icon} size={18} />
                     {link.label}
                   </Link>
                 </li>
