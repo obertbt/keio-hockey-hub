@@ -171,6 +171,10 @@ v_full_name text := '自分の名前';
 
 5. **Deploy** を押して、2〜3分待ちます
 
+> Docker 向けの `output: 'standalone'` は、Vercel では自動で外れます
+> （`next.config.ts`）。Vercel は同じことを自前でやるため、
+> 指定したままだとビルドが失敗します。
+
 ### 手順4: 戻り先を教える（ログインに必要）
 
 Vercel が出した URL（`https://～.vercel.app`）を控えて、2か所に入れます。
