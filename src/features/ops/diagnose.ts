@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { getAppSession } from '@/lib/auth/session';
+import { getCoachDashboard, getPlayerDashboard } from '@/features/dashboard/queries';
+import { getAppSession, isStaff } from '@/lib/auth/session';
 import { createClient, getCurrentUser } from '@/lib/supabase/server';
 
 /**
@@ -216,6 +217,46 @@ export async function diagnose(): Promise<DiagnosisItem[]> {
     detail: failures.length === 0 ? 'すべて読めました。' : failures.join(' / '),
     next: failures.length === 0 ? undefined : '上に出ている表や関数が足りていません。',
   });
+
+  // 8. **「今日」の処理そのものを、ここで呼ぶ**
+  //
+  //    表を1つずつ確かめる形では、全部「大丈夫」なのに
+  //    画面だけ落ちる状態を捉えられなかった。実際にそうなった。
+  //    網を広げるより、本物を呼んだほうが確実で、漏れが無い。
+  //
+  //    例外の中身は本番では画面に出ないが、ここでは自分で捕まえるので出せる。
+  //    設定を直す人しか見ない画面であり、
+  //    ここに出ないと置き場所のログを掘るしかなくなる。
+  try {
+    if (isStaff(session)) {
+      await getCoachDashboard(session);
+    } else {
+      await getPlayerDashboard(session);
+    }
+    items.push({
+      label: '「今日」の中身を組み立てられるか',
+      state: 'ok',
+      detail: '組み立てられました。画面が開くはずです。',
+    });
+  } catch (unexpected) {
+    const error = unexpected instanceof Error ? unexpected : new Error(String(unexpected));
+    items.push({
+      label: '「今日」の中身を組み立てられるか',
+      state: 'ng',
+      detail: short(`${error.name}: ${error.message}`),
+      next: 'この文言をそのまま開発者に伝えてください。ここが画面の落ちている原因です。',
+    });
+
+    // どこで落ちたかも出す。行番号だけでも当たりが付く。
+    const stack = error.stack?.split('\n').slice(1, 4).join(' / ');
+    if (stack) {
+      items.push({
+        label: '落ちた場所',
+        state: 'ng',
+        detail: short(stack),
+      });
+    }
+  }
 
   return items;
 }
