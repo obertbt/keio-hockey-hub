@@ -11,6 +11,7 @@ import {
 } from '@/features/timeline/queries';
 import { listReportsAwaitingComment } from '@/features/daily/feedback-queries';
 import { countUnreadAnswers, countWaitingQuestions, listAwaitingCoach } from '@/features/feedback/queries';
+import { countOpenMentions } from '@/features/video/board-queries';
 import { isOverdue } from '@/features/feedback/lib/state';
 import { countAwaitingReview, countSentBack, getSkillOverview } from '@/features/skills/queries';
 import { countUnreadNotifications } from '@/features/ops/queries';
@@ -44,6 +45,8 @@ export interface PlayerDashboardData {
   unreadNotificationCount: number;
   /** 直近の測定で自己ベストだった項目の数（3章の6）。 */
   recentBestCount: number;
+  /** 動画で自分が呼ばれていて、まだ返していないもの（0024）。 */
+  openMentionCount: number;
 }
 
 /** 選手向け「今日」（11章）。 */
@@ -102,6 +105,7 @@ export async function getPlayerDashboard(session: AppSession): Promise<PlayerDas
     skillOverview,
     unreadNotificationCount,
     recentBestCount,
+    openMentionCount,
   ] = await Promise.all([
     countUnreadAnswers(session),
     countWaitingQuestions(session),
@@ -109,6 +113,7 @@ export async function getPlayerDashboard(session: AppSession): Promise<PlayerDas
     getSkillOverview(session),
     countUnreadNotifications(session),
     countRecentBests(session),
+    countOpenMentions(session),
   ]);
 
   const todayState: TodayState = {
@@ -139,6 +144,7 @@ export async function getPlayerDashboard(session: AppSession): Promise<PlayerDas
     skillProgress: skillOverview.total,
     unreadNotificationCount,
     recentBestCount,
+    openMentionCount,
   };
 }
 
@@ -162,6 +168,8 @@ export interface CoachDashboardData {
   uncommentedReportCount: number;
   /** まだ読んでいないお知らせ（57章）。 */
   unreadNotificationCount: number;
+  /** 動画で自分が呼ばれていて、まだ返していないもの（0024）。 */
+  openMentionCount: number;
 }
 
 /** コーチ向け「今日」（12章）。 */
@@ -223,13 +231,15 @@ export async function getCoachDashboard(session: AppSession): Promise<CoachDashb
     }));
 
   // 12章: 未対応の質問を見落とさないようにする
-  const [awaiting, awaitingSkillCount, unreadNotificationCount, todayReports] = await Promise.all([
-    listAwaitingCoach(session),
-    countAwaitingReview(session),
-    countUnreadNotifications(session),
-    // 16章: 日報も、返事が無いままだと「見られていない」になる
-    listReportsAwaitingComment(session, date),
-  ]);
+  const [awaiting, awaitingSkillCount, unreadNotificationCount, todayReports, openMentionCount] =
+    await Promise.all([
+      listAwaitingCoach(session),
+      countAwaitingReview(session),
+      countUnreadNotifications(session),
+      // 16章: 日報も、返事が無いままだと「見られていない」になる
+      listReportsAwaitingComment(session, date),
+      countOpenMentions(session),
+    ]);
   const overdueFeedbackCount = awaiting.filter((item) =>
     isOverdue(item.request.status, item.request.submitted_at),
   ).length;
@@ -247,6 +257,7 @@ export async function getCoachDashboard(session: AppSession): Promise<CoachDashb
     awaitingSkillCount,
     uncommentedReportCount: todayReports.filter((entry) => entry.commentCount === 0).length,
     unreadNotificationCount,
+    openMentionCount,
   };
 }
 

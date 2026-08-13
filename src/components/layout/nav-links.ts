@@ -42,7 +42,9 @@ export const MAIN_NAV: NavLink[] = [
   { href: '/report', label: '日報', icon: 'report', bottom: true },
   { href: '/schedule', label: '予定', icon: 'calendar' },
   { href: '/videos', label: '動画', icon: 'video', permission: 'video.view_team', bottom: true },
-  { href: '/feedback', label: '質問', icon: 'message' },
+  // 0024 で掲示板に一本化した。新しく質問は作らないが、
+  // これまでのやり取りは残っているので、辿れるようにしておく。
+  { href: '/feedback', label: 'これまでの質問', icon: 'message' },
   { href: '/skills', label: 'スキル', icon: 'award' },
   { href: '/measurements', label: '測定', icon: 'ruler' },
   { href: '/notifications', label: 'お知らせ', icon: 'bell' },

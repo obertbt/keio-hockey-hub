@@ -261,6 +261,31 @@ export type ReportFeedbackRow = {
   deleted_at: string | null;
 };
 
+/** 動画の掲示板（0024）。時間 + ひとこと。返信は1段だけ。 */
+export type VideoCommentRow = {
+  id: string;
+  team_id: string;
+  video_id: string;
+  author_id: string;
+  parent_id: string | null;
+  /** 動画のどこか。全体について書くときは null。 */
+  at_seconds: number | null;
+  body: string;
+  /** 既定は staff。本人だけが team へ開ける。 */
+  visibility: 'staff' | 'team';
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+export type VideoCommentMentionRow = {
+  id: string;
+  team_id: string;
+  video_comment_id: string;
+  team_member_id: string;
+  created_at: string;
+};
+
 export type TrainingRecordRow = {
   id: string;
   team_id: string;
@@ -859,6 +884,14 @@ export type Database = {
         ReportFeedbackRow,
         Exclude<keyof ReportFeedbackRow, 'team_id' | 'daily_report_id' | 'author_id' | 'body'>
       >;
+      video_comments: TableShape<
+        VideoCommentRow,
+        Exclude<keyof VideoCommentRow, 'team_id' | 'video_id' | 'author_id' | 'body'>
+      >;
+      video_comment_mentions: TableShape<
+        VideoCommentMentionRow,
+        Exclude<keyof VideoCommentMentionRow, 'team_id' | 'video_comment_id' | 'team_member_id'>
+      >;
       training_records: TableShape<
         TrainingRecordRow,
         Exclude<keyof TrainingRecordRow, 'team_id' | 'team_member_id' | 'performed_on' | 'training_type'>
@@ -1003,6 +1036,7 @@ export type Database = {
       soft_delete_training_record: { Args: { p_record_id: string }; Returns: undefined };
       soft_delete_skill: { Args: { p_skill_id: string }; Returns: undefined };
       soft_delete_report_feedback: { Args: { p_feedback_id: string }; Returns: undefined };
+      soft_delete_video_comment: { Args: { p_comment_id: string }; Returns: undefined };
       /** 消したものの一覧と復元（0020）。通常の SELECT では引けないため。 */
       list_deleted_items: {
         Args: { p_team_id: string };

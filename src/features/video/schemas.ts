@@ -156,3 +156,59 @@ export const askQuestionSchema = z.object({
 });
 
 export type AskQuestionInput = z.infer<typeof askQuestionSchema>;
+
+// -------------------------------------------------------------
+// 掲示板への書き込み（0024）
+// -------------------------------------------------------------
+
+/**
+ * 動画のどこか。
+ *
+ * 空欄なら「動画全体について」。位置を決めさせない。
+ * 気になったことを書くのに、毎回どこかを指させるのは重い。
+ */
+const atSecondsSchema = z
+  .string()
+  .optional()
+  .transform((value, ctx) => {
+    const raw = value?.trim() ?? '';
+    if (raw === '') return null;
+
+    const seconds = parseTimecodeToSeconds(raw);
+    if (seconds === null || seconds < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: '時間を読み取れません。時計の表示のまま、数字だけで入れてください（例: 1234 → 12:34）。',
+      });
+      return z.NEVER;
+    }
+    return seconds;
+  });
+
+export const videoCommentSchema = z.object({
+  video_id: z.guid('対象の動画が分かりません。'),
+  at_seconds: atSecondsSchema,
+  body: z
+    .string()
+    .trim()
+    .min(1, 'ひとことでいいので書いてください。')
+    .max(2000, '長すぎます（2000文字まで）'),
+  /** 呼びたい相手。0人でもよい。 */
+  mention_member_ids: z.array(z.guid()).max(20, '宛先が多すぎます。').default([]),
+  /** 既定はコーチとスタッフまで（29章と同じ考え方）。 */
+  visibility: z.enum(['staff', 'team']).default('staff'),
+});
+
+export type VideoCommentInput = z.infer<typeof videoCommentSchema>;
+
+export const videoReplySchema = z.object({
+  parent_id: z.guid('返信先が分かりません。'),
+  body: z
+    .string()
+    .trim()
+    .min(1, 'ひとことでいいので書いてください。')
+    .max(2000, '長すぎます（2000文字まで）'),
+  mention_member_ids: z.array(z.guid()).max(20, '宛先が多すぎます。').default([]),
+});
+
+export type VideoReplyInput = z.infer<typeof videoReplySchema>;

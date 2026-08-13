@@ -19,11 +19,18 @@ export function VideoWatch({
   providerVideoId,
   clips,
   selectedClipId,
+  startSeconds = null,
 }: {
   providerVideoId: string;
   clips: VideoClipRow[];
   /** 質問から辿ってきた場合、その場面を最初から選んでおく。 */
   selectedClipId?: string | null;
+  /**
+   * 掲示板の時間を押して来たときの再生位置（0024）。
+   * 「12:34 のところ」と書かれていても、そこまで自分で送るのは手間なので、
+   * 押したらそこから流れるようにする。
+   */
+  startSeconds?: number | null;
 }) {
   const [selected, setSelected] = useState<VideoClipRow | null>(
     clips.find((clip) => clip.id === selectedClipId) ?? null,
@@ -31,7 +38,7 @@ export function VideoWatch({
 
   const embedUrl = selected
     ? buildEmbedUrl(providerVideoId, selected.start_seconds, selected.end_seconds)
-    : buildEmbedUrl(providerVideoId, null, null);
+    : buildEmbedUrl(providerVideoId, startSeconds, null);
 
   return (
     <div className="space-y-3">

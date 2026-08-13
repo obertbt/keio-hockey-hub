@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
+  MessageSquare,
   NotebookPen,
   Ruler,
   Target,
@@ -73,6 +74,19 @@ async function PlayerToday() {
         />
         <WriteLink href="/videos" label="動画に書き込む" icon={<Video size={22} aria-hidden />} />
       </div>
+
+      {data.openMentionCount > 0 ? (
+        <Link
+          href="/videos"
+          className="flex min-h-12 items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm dark:bg-amber-950/40"
+        >
+          <span className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+            <MessageSquare size={16} aria-hidden />
+            動画で {data.openMentionCount} 件、あなたが呼ばれています
+          </span>
+          <ChevronRight size={16} className="text-[--color-muted]" aria-hidden />
+        </Link>
+      ) : null}
 
       {data.unreadNotificationCount > 0 ? (
         <Link
@@ -267,28 +281,32 @@ async function CoachToday() {
         )}
       </Card>
 
-      {/* 12章: 未対応の質問を見落とさない */}
-      <Card className={data.overdueFeedbackCount > 0 ? 'border-amber-400' : undefined}>
+      {/* 12章: 呼ばれたまま返していないものを見落とさない（0024 で掲示板に一本化） */}
+      <Card className={data.openMentionCount > 0 ? 'border-amber-400' : undefined}>
         <CardHeader
-          title="動画の質問"
+          title="動画の書き込み"
+          icon={<MessageSquare size={16} aria-hidden />}
           action={
-            <Link href="/feedback" className="text-keio-700 dark:text-keio-300 text-sm underline">
-              一覧
+            <Link href="/videos" className="text-keio-700 dark:text-keio-300 text-sm underline">
+              動画一覧
             </Link>
           }
         />
-        {data.awaitingFeedbackCount === 0 ? (
-          <EmptyState>未回答の質問はありません。</EmptyState>
+        {data.openMentionCount === 0 ? (
+          <EmptyState>返事待ちの書き込みはありません。</EmptyState>
         ) : (
           <p className="text-sm">
-            未回答 {data.awaitingFeedbackCount} 件
-            {data.overdueFeedbackCount > 0 ? (
-              <span className="ml-2 font-medium text-amber-700">
-                （うち {data.overdueFeedbackCount} 件は3日以上お待たせしています）
-              </span>
-            ) : null}
+            あなたが呼ばれていて、まだ返していないものが {data.openMentionCount} 件あります。
           </p>
         )}
+        {data.awaitingFeedbackCount > 0 ? (
+          <p className="mt-2 border-t border-[--color-border] pt-2 text-xs text-[--color-muted]">
+            以前の仕組みで出された質問が {data.awaitingFeedbackCount} 件残っています。
+            <Link href="/feedback" className="text-keio-700 dark:text-keio-300 ml-1 underline">
+              これまでの質問
+            </Link>
+          </p>
+        ) : null}
       </Card>
 
       {/* 32章: スキル申請も、放っておくと選手を待たせる */}
