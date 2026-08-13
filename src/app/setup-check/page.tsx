@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { diagnose, type CheckState } from '@/features/ops/diagnose';
 import { isSupabaseConfigured } from '@/lib/env';
+import { recentErrors } from '@/lib/observability/last-errors';
 import { isStorageConfigured } from '@/lib/storage/r2';
 
 export const metadata: Metadata = { title: '接続設定の確認' };
@@ -103,10 +104,47 @@ export default async function SetupCheckPage() {
         </>
       ) : null}
 
+      <RecentErrors />
+
       <p className="mt-6 text-xs text-gray-500">
         設定方法は README と docs/deployment.md を参照してください。
       </p>
     </main>
+  );
+}
+
+/**
+ * 直近に起きたサーバー側のエラー。
+ *
+ * 画面には理由を出さない決まりなので、ここでだけ見せる。
+ * 「エラーを出した直後にここを開く」という使い方をする。
+ */
+function RecentErrors() {
+  const errors = recentErrors();
+  if (errors.length === 0) return null;
+
+  return (
+    <>
+      <h2 className="mt-8 mb-1 text-base font-bold">直近に起きたエラー</h2>
+      <p className="mb-4 text-xs text-gray-500">
+        画面には理由を出していないため、ここに出します。しばらく経つと消えます。
+      </p>
+
+      <ul className="space-y-3">
+        {errors.map((error) => (
+          <li key={`${error.at}-${error.digest ?? ''}`} className="rounded-xl border border-red-200 p-4">
+            <p className="text-sm font-medium">
+              {error.path}
+              {error.digest ? <span className="ml-2 font-mono text-xs">{error.digest}</span> : null}
+            </p>
+            <p className="mt-1 text-xs break-all text-red-700">
+              {error.name}: {error.message}
+            </p>
+            {error.where ? <p className="mt-1 text-xs break-all text-gray-500">{error.where}</p> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
