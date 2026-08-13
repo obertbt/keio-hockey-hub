@@ -17,6 +17,8 @@ const PROTECTED_PATHS = [
   '/report',
   '/training',
   '/videos',
+  '/videos/team',
+  '/videos/clips',
   '/feedback',
   '/skills',
   '/skills/applications',

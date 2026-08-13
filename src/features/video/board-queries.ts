@@ -179,3 +179,26 @@ function pick(display: string | null | undefined, full: string | null | undefine
   if (display !== null && display !== undefined && display !== '') return display;
   return full ?? '不明';
 }
+
+/**
+ * 動画ごとの書き込み件数。
+ *
+ * 一覧に出す。どの動画で話が動いているかが、開く前に分かる。
+ * 見えない書き込みは数にも入らない（RLS がそのまま効く）。
+ */
+export async function countCommentsByVideo(videoIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (videoIds.length === 0) return counts;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('video_comments')
+    .select('video_id')
+    .in('video_id', videoIds)
+    .is('deleted_at', null);
+
+  for (const row of data ?? []) {
+    counts.set(row.video_id, (counts.get(row.video_id) ?? 0) + 1);
+  }
+  return counts;
+}
