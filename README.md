@@ -113,25 +113,35 @@ Vercel    …… アプリの置き場所。GitHub とつなぐだけ
 3. Database Password は控えておきます（今回は使いませんが、後で要ります）
 4. 出来上がるまで2分ほど待ちます
 
-### 手順2: SQL を3回貼り付ける（10分）
+### 手順2: SQL を9回貼り付ける（15分）
 
-左の **SQL Editor** を開き、**New query** で次の3つを順に実行します。
-それぞれ GitHub 上のファイルを開き、**Raw** ボタンを押して全選択・コピーします。
+左の **SQL Editor** を開き、**New query** で次を**番号順に**実行します。
+それぞれ GitHub 上のファイルを開き、**Raw** を押して全選択・コピーします。
 
-| 順  | ファイル                                         | 何をするか                                   |
-| --- | ------------------------------------------------ | -------------------------------------------- |
-| 1   | `keio-hockey-hub/supabase/bundled.sql`           | 表・RLS・関数を全部作る                      |
-| 2   | `keio-hockey-hub/supabase/seed.sql`              | 見本のチーム・今週・練習予定・スキルを入れる |
-| 3   | `keio-hockey-hub/supabase/setup/first-admin.sql` | 自分を管理者にする（下記）                   |
+| 順    | ファイル                          | 何をするか                       |
+| ----- | --------------------------------- | -------------------------------- |
+| 1〜7  | `supabase/parts/01.sql` 〜 `07.sql` | 表・RLS・関数を全部作る          |
+| 8     | `supabase/seed.sql`               | 見本のチーム・今週・練習予定など |
+| 9     | `supabase/setup/first-admin.sql`  | 自分を管理者にする（下記）       |
 
-> 1 を流すと `... does not exist, skipping` という黄色い NOTICE がたくさん出ます。
-> これは正常です。**ERROR** が出ていなければ成功です。
+`parts/` は貼り付け用に分けたものです。
+1ファイル版（`supabase/bundled.sql`）は19万文字あり、
+タブレットでは全選択もコピーも重くなります。実際にそこで詰まりました。
 
-3 の前に、**Authentication → Users → Add user → Create new user** で
+分割の境目は migration の切れ目に置いてあるので、
+順に流せば1ファイル版とまったく同じ結果になります。
+（表54・関数85・ポリシー103・トリガ47の一致と、DB テスト13種の通過を確認済み）
+
+同じクエリ画面を使い回して構いません。**毎回、前の中身を消してから**貼ってください。
+
+> 黄色い `... does not exist, skipping` がたくさん出ますが正常です。
+> **赤い ERROR** が出ていなければ次へ進んでください。
+
+9 の前に、**Authentication → Users → Add user → Create new user** で
 自分のメールとパスワードを登録してください。
 **Auto Confirm User を必ず有効に**します（確認メールを待たずに入れます）。
 
-そのうえで 3 のファイルの冒頭2行だけ書き換えて実行します。
+そのうえで 9 のファイルの冒頭2行だけ書き換えて実行します。
 
 ```sql
 v_email     text := 'いま登録したメールアドレス';
@@ -143,14 +153,10 @@ v_full_name text := '自分の名前';
 ### 手順3: Vercel に置く（10分）
 
 1. <https://vercel.com> で **Continue with GitHub**
-2. **Add New → Project** → このリポジトリを **Import**
-3. 設定を2か所だけ変えます
-
-   | 項目             | 値                               |
-   | ---------------- | -------------------------------- |
-   | Root Directory   | `keio-hockey-hub` ← **必ず変更** |
-   | Framework Preset | Next.js（自動で入ります）        |
-
+2. **Add New → Project** → `keio-hockey-hub` を **Import**
+3. 設定は**そのままで構いません**。
+   このリポジトリはルートに `package.json` があるので、
+   Root Directory も枝も触る必要はありません。
 4. **Environment Variables** に3つ入れます。
    値は Supabase の **Project Settings → API** にあります。
 
@@ -165,20 +171,12 @@ v_full_name text := '自分の名前';
 
 5. **Deploy** を押して、2〜3分待ちます
 
-### 手順4: 開発中の枝を見るように直す
-
-いまの作業は `claude/keio-hockey-hub-dev-13faol` という枝にあります。
-Vercel は既定で main を見るので、そこを変えます。
-
-**Project Settings → Git → Production Branch** を
-`claude/keio-hockey-hub-dev-13faol` にして、**Deployments → Redeploy**。
-
-### 手順5: 戻り先を教える（ログインに必要）
+### 手順4: 戻り先を教える（ログインに必要）
 
 Vercel が出した URL（`https://～.vercel.app`）を控えて、2か所に入れます。
 
 1. Supabase の **Authentication → URL Configuration → Site URL** に貼る
-2. Vercel の **Environment Variables** に足して、もう一度 Redeploy
+2. Vercel の **Settings → Environment Variables** に足して、**Redeploy**
 
    ```
    NEXT_PUBLIC_APP_URL = https://～.vercel.app
@@ -186,7 +184,7 @@ Vercel が出した URL（`https://～.vercel.app`）を控えて、2か所に�
 
 これをしないと、パスワード再設定や招待リンクが localhost へ戻ろうとします。
 
-### 手順6: 開く
+### 手順5: 開く
 
 タブレットで `https://～.vercel.app` を開き、手順2で作ったメールとパスワードでログインします。
 
@@ -210,7 +208,6 @@ Vercel が出した URL（`https://～.vercel.app`）を控えて、2か所に�
 ### 2. 準備
 
 ```bash
-cd keio-hockey-hub
 pnpm install
 cp .env.example .env.local
 ```
