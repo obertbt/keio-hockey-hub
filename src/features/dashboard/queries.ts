@@ -11,7 +11,11 @@ import {
 } from '@/features/timeline/queries';
 import { listReportsAwaitingComment } from '@/features/daily/feedback-queries';
 import { countUnreadAnswers, countWaitingQuestions, listAwaitingCoach } from '@/features/feedback/queries';
-import { countOpenMentions } from '@/features/video/board-queries';
+import {
+  countOpenMentions,
+  listUnansweredComments,
+  type UnansweredComment,
+} from '@/features/video/board-queries';
 import { isOverdue } from '@/features/feedback/lib/state';
 import { countAwaitingReview, countSentBack, getSkillOverview } from '@/features/skills/queries';
 import { countUnreadNotifications } from '@/features/ops/queries';
@@ -170,6 +174,14 @@ export interface CoachDashboardData {
   unreadNotificationCount: number;
   /** 動画で自分が呼ばれていて、まだ返していないもの（0024）。 */
   openMentionCount: number;
+  /**
+   * 誰も返していない書き込み。呼ばれていなくても拾う。
+   *
+   * 通知は「呼ばれた人」にしか飛ばない。それは正しいが、
+   * **遠慮して誰も呼ばなかった書き込みが誰にも読まれない**という穴が残る。
+   * 通知を増やすのではなく、コーチの画面で拾えるようにして塞ぐ。
+   */
+  unansweredComments: UnansweredComment[];
 }
 
 /** コーチ向け「今日」（12章）。 */
@@ -231,15 +243,23 @@ export async function getCoachDashboard(session: AppSession): Promise<CoachDashb
     }));
 
   // 12章: 未対応の質問を見落とさないようにする
-  const [awaiting, awaitingSkillCount, unreadNotificationCount, todayReports, openMentionCount] =
-    await Promise.all([
-      listAwaitingCoach(session),
-      countAwaitingReview(session),
-      countUnreadNotifications(session),
-      // 16章: 日報も、返事が無いままだと「見られていない」になる
-      listReportsAwaitingComment(session, date),
-      countOpenMentions(session),
-    ]);
+  const [
+    awaiting,
+    awaitingSkillCount,
+    unreadNotificationCount,
+    todayReports,
+    openMentionCount,
+    unansweredComments,
+  ] = await Promise.all([
+    listAwaitingCoach(session),
+    countAwaitingReview(session),
+    countUnreadNotifications(session),
+    // 16章: 日報も、返事が無いままだと「見られていない」になる
+    listReportsAwaitingComment(session, date),
+    countOpenMentions(session),
+    // 呼ばれていない書き込みも拾う。遠慮する子ほど埋もれるので。
+    listUnansweredComments(session),
+  ]);
   const overdueFeedbackCount = awaiting.filter((item) =>
     isOverdue(item.request.status, item.request.submitted_at),
   ).length;
@@ -258,6 +278,7 @@ export async function getCoachDashboard(session: AppSession): Promise<CoachDashb
     uncommentedReportCount: todayReports.filter((entry) => entry.commentCount === 0).length,
     unreadNotificationCount,
     openMentionCount,
+    unansweredComments,
   };
 }
 

@@ -6,9 +6,10 @@ import { Card, CardHeader, EmptyState } from '@/components/ui/card';
 import { R2Player } from '@/features/upload/components/r2-player';
 import { listBoard, listMentionCandidates } from '@/features/video/board-queries';
 import { VideoBoard, VideoBoardForm, type BoardItem } from '@/features/video/components/video-board';
+import { VideoVisibilityControl } from '@/features/video/components/video-visibility';
 import { VideoWatch } from '@/features/video/components/video-watch';
 import { getVideo, listClips } from '@/features/video/queries';
-import { requireSession } from '@/lib/auth/session';
+import { isStaff, requireSession } from '@/lib/auth/session';
 import { formatDateTimeInTokyo } from '@/lib/datetime';
 import { formatSecondsToTimecode, parseTimecodeToSeconds } from '@/lib/storage/validation';
 
@@ -44,6 +45,10 @@ export default async function VideoDetailPage({
   ]);
 
   const startSeconds = t ? parseTimecodeToSeconds(t) : null;
+
+  // 上げた本人は自由に。スタッフは狭める側だけ（29章）。
+  const isOwner = video.created_by === session.profileId;
+  const canTouchVisibility = isOwner || isStaff(session);
 
   const items: BoardItem[] = board.map((entry) => ({
     id: entry.comment.id,
@@ -111,6 +116,18 @@ export default async function VideoDetailPage({
         <CardHeader title="気づいたことを書く" description="ひとことで構いません。" />
         <VideoBoardForm videoId={video.id} candidates={candidates} />
       </Card>
+
+      {/*
+        公開範囲を手で変えられるようにする。
+        取り込んだ動画は「部内全員」で入るが、
+        他校との練習試合など、狭めたいものもある。
+      */}
+      {canTouchVisibility ? (
+        <Card>
+          <CardHeader title="この動画を見られる人" />
+          <VideoVisibilityControl videoId={video.id} current={video.visibility} canOpenToTeam={isOwner} />
+        </Card>
+      ) : null}
     </div>
   );
 }

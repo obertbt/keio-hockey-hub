@@ -2,11 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { requirePermission, requireSession } from '@/lib/auth/session';
+import { isStaff, requirePermission, requireSession } from '@/lib/auth/session';
 import { validateClipRange } from '@/lib/storage/validation';
 import { createClient } from '@/lib/supabase/server';
 import { thumbnailUrlFor } from '@/lib/video/youtube';
+import type { MediaVisibility } from '@/types/database.types';
 
+import { canChangeVideoVisibility, VIDEO_VISIBILITY_LABELS } from './lib/visibility';
 import { askQuestionSchema, createClipSchema, registerVideoSchema } from './schemas';
 
 /**
@@ -90,6 +92,60 @@ export async function registerVideo(
 
   revalidatePath('/videos');
   return { success: '動画を登録しました。' };
+}
+
+/**
+ * 動画1本の公開範囲を手で変える。
+ *
+ * 取り込んだ動画は「部内全員」で入る（YouTube 側で既に部員が見られるため）。
+ * ただし、たとえば他校との練習試合など、部内だけに留めたい映像もある。
+ * そのときにここで狭める。
+ *
+ * **コーチが一方的に広げることはできない**（29章）。
+ * 判断そのものは lib/visibility.ts に置いてテストしてある。
+ */
+export async function setVideoVisibility(
+  _prevState: VideoActionState,
+  formData: FormData,
+): Promise<VideoActionState> {
+  const session = await requireSession();
+
+  const videoId = text(formData, 'video_id') ?? '';
+  const raw = text(formData, 'visibility') ?? '';
+  if (videoId === '') return { error: '対象の動画が分かりません。' };
+  if (raw !== 'team' && raw !== 'private_staff' && raw !== 'selected_members') {
+    return { error: '公開範囲の指定が正しくありません。' };
+  }
+  const next: MediaVisibility = raw;
+
+  const supabase = await createClient();
+
+  const { data: video } = await supabase
+    .from('videos')
+    .select('id, visibility, created_by')
+    .eq('team_id', session.teamId)
+    .eq('id', videoId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (!video) return { error: 'その動画は見つかりません。' };
+
+  const check = canChangeVideoVisibility({
+    current: video.visibility,
+    next,
+    isOwner: video.created_by === session.profileId,
+    isStaff: isStaff(session),
+  });
+  if (!check.ok) return { error: check.reason };
+
+  const { error } = await supabase.from('videos').update({ visibility: next }).eq('id', video.id);
+  if (error) return { error: `変えられませんでした: ${error.message}` };
+
+  revalidatePath(`/videos/${video.id}`);
+  revalidatePath('/videos');
+  revalidatePath('/videos/team');
+
+  return { success: `この動画を「${VIDEO_VISIBILITY_LABELS[next]}」にしました。` };
 }
 
 /**

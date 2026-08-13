@@ -202,3 +202,81 @@ export async function countCommentsByVideo(videoIds: string[]): Promise<Map<stri
   }
   return counts;
 }
+
+export interface UnansweredComment {
+  commentId: string;
+  videoId: string;
+  videoTitle: string;
+  authorName: string;
+  body: string;
+  atSeconds: number | null;
+  createdAt: string;
+}
+
+/**
+ * まだ誰も返していない書き込み（コーチ向け）。
+ *
+ * 呼ばれていなくても拾えるようにする。
+ *
+ * 通知は「呼ばれた人」にしか飛ばない。
+ * それは正しい（全員に飛ばすと読まれなくなる）が、
+ * **遠慮して誰も呼ばなかった書き込みが、誰にも読まれない**という穴が残る。
+ * 遠慮する子ほど埋もれる、といういちばん困る形になる。
+ *
+ * 通知を増やすのではなく、コーチの画面で拾えるようにして塞ぐ。
+ */
+export async function listUnansweredComments(session: AppSession, limit = 5): Promise<UnansweredComment[]> {
+  const supabase = await createClient();
+
+  // 元の書き込み（返信ではないもの）だけを見る
+  const { data: roots } = await supabase
+    .from('video_comments')
+    .select('id, video_id, author_id, body, at_seconds, created_at')
+    .eq('team_id', session.teamId)
+    .is('parent_id', null)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  const candidates = (roots ?? []).filter((row) => row.author_id !== session.profileId);
+  if (candidates.length === 0) return [];
+
+  const { data: replies } = await supabase
+    .from('video_comments')
+    .select('parent_id')
+    .in(
+      'parent_id',
+      candidates.map((row) => row.id),
+    )
+    .is('deleted_at', null);
+
+  const answered = new Set((replies ?? []).map((row) => row.parent_id));
+  const unanswered = candidates.filter((row) => !answered.has(row.id)).slice(0, limit);
+  if (unanswered.length === 0) return [];
+
+  const [{ data: videos }, { data: profiles }] = await Promise.all([
+    supabase
+      .from('videos')
+      .select('id, title')
+      .in('id', [...new Set(unanswered.map((row) => row.video_id))]),
+    supabase
+      .from('profiles')
+      .select('id, full_name, display_name')
+      .in('id', [...new Set(unanswered.map((row) => row.author_id))]),
+  ]);
+
+  const titleByVideo = new Map((videos ?? []).map((video) => [video.id, video.title]));
+  const nameByProfile = new Map(
+    (profiles ?? []).map((profile) => [profile.id, pick(profile.display_name, profile.full_name)]),
+  );
+
+  return unanswered.map((row) => ({
+    commentId: row.id,
+    videoId: row.video_id,
+    videoTitle: titleByVideo.get(row.video_id) ?? '動画',
+    authorName: nameByProfile.get(row.author_id) ?? '不明',
+    body: row.body,
+    atSeconds: row.at_seconds,
+    createdAt: row.created_at,
+  }));
+}

@@ -21,6 +21,7 @@ import { pendingActions, todayHeadline } from '@/features/dashboard/lib/pending-
 import { ProgressBar } from '@/features/skills/components/progress-bar';
 import { isStaff, requireSession } from '@/lib/auth/session';
 import { formatDateLabel, formatTimeLabel } from '@/lib/datetime';
+import { formatSecondsToTimecode } from '@/lib/storage/validation';
 import { EVENT_TYPE_LABELS } from '@/lib/labels';
 import type { EventRow } from '@/types/database.types';
 
@@ -282,7 +283,11 @@ async function CoachToday() {
       </Card>
 
       {/* 12章: 呼ばれたまま返していないものを見落とさない（0024 で掲示板に一本化） */}
-      <Card className={data.openMentionCount > 0 ? 'border-amber-400' : undefined}>
+      <Card
+        className={
+          data.openMentionCount > 0 || data.unansweredComments.length > 0 ? 'border-amber-400' : undefined
+        }
+      >
         <CardHeader
           title="動画の書き込み"
           icon={<MessageSquare size={16} aria-hidden />}
@@ -292,13 +297,51 @@ async function CoachToday() {
             </Link>
           }
         />
-        {data.openMentionCount === 0 ? (
+        {data.openMentionCount === 0 && data.unansweredComments.length === 0 ? (
           <EmptyState>返事待ちの書き込みはありません。</EmptyState>
-        ) : (
+        ) : null}
+
+        {data.openMentionCount > 0 ? (
           <p className="text-sm">
             あなたが呼ばれていて、まだ返していないものが {data.openMentionCount} 件あります。
           </p>
-        )}
+        ) : null}
+
+        {/*
+          呼ばれていない書き込みも、ここで拾えるようにする。
+          通知は「呼ばれた人」にしか飛ばない。それは正しいが、
+          遠慮して誰も呼ばなかった書き込みが、誰にも読まれないまま残る。
+          遠慮する子ほど埋もれる、といういちばん困る形になる。
+        */}
+        {data.unansweredComments.length > 0 ? (
+          <div className={data.openMentionCount > 0 ? 'mt-3 border-t border-[--color-border] pt-3' : ''}>
+            <p className="mb-2 text-sm">まだ誰も返していない書き込みが {data.unansweredComments.length} 件</p>
+            <ul className="space-y-2">
+              {data.unansweredComments.map((item) => (
+                <li key={item.commentId}>
+                  <Link
+                    href={
+                      item.atSeconds === null
+                        ? `/videos/${item.videoId}`
+                        : `/videos/${item.videoId}?t=${Math.floor(item.atSeconds)}`
+                    }
+                    className="block rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-950/40"
+                  >
+                    <span className="flex flex-wrap items-center gap-2 text-xs text-[--color-muted]">
+                      <span className="font-medium text-[--color-foreground]">{item.authorName}</span>
+                      <span>{item.videoTitle}</span>
+                      {item.atSeconds === null ? null : (
+                        <span className="font-mono">{formatSecondsToTimecode(item.atSeconds)}</span>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-sm">{item.body}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {data.awaitingFeedbackCount > 0 ? (
           <p className="mt-2 border-t border-[--color-border] pt-2 text-xs text-[--color-muted]">
             以前の仕組みで出された質問が {data.awaitingFeedbackCount} 件残っています。
