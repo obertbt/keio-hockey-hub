@@ -35,6 +35,7 @@ MAX_CHARS=${MAX_CHARS:-32000}
 
 OUT="supabase/bundled.sql"
 PARTS="supabase/parts"
+UPDATES="supabase/updates"
 
 header() {
   echo "-- =========================================================="
@@ -96,8 +97,17 @@ for file in supabase/migrations/*.sql; do
 done
 flush_part
 
+# --- 貼り付け用（1つずつ・コメント無し） --------------------
+# 追加の migration を1つ流すだけ、という場面がいちばん多い。
+# そのために、1ファイルずつ短くしたものも置く。
+# コメントを落とすと3割ほど縮む。中身（動き）は変えない。
+rm -rf "$UPDATES"
+mkdir -p "$UPDATES"
+python3 scripts/strip-sql-comments.py supabase/migrations "$UPDATES"
+
 COUNT=$(find supabase/migrations -name '*.sql' | wc -l | tr -d ' ')
 echo
 echo "$COUNT 個の migration をまとめました。"
 echo "  パソコンから: $OUT を1回貼る"
 echo "  タブレットから: $PARTS/ を番号順に貼る"
+echo "  追加ぶんだけ: $UPDATES/ の新しい番号を貼る（短い）"
