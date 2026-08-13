@@ -25,7 +25,10 @@ export interface NavLink {
    * スマートフォンの下部ナビゲーションに出すか。
    *
    * 画面幅 360px で1つあたり 60px しか取れないため、6つが上限。
-   * 毎日通る道（循環）だけを残し、それ以外は設定から辿れるようにする。
+   *
+   * ただし6つ並べると、どれも小さくなって選びにくい。
+   * 学生が毎日触るのは日報と動画の2つなので、**4つに絞る**。
+   * 外したもの（予定・質問・スキル）は「今日」と設定から辿れる。
    */
   bottom?: boolean;
 }
@@ -36,10 +39,11 @@ export interface NavLink {
  */
 export const MAIN_NAV: NavLink[] = [
   { href: '/today', label: '今日', icon: 'home', bottom: true },
-  { href: '/schedule', label: '予定', icon: 'calendar', bottom: true },
+  { href: '/report', label: '日報', icon: 'report', bottom: true },
+  { href: '/schedule', label: '予定', icon: 'calendar' },
   { href: '/videos', label: '動画', icon: 'video', permission: 'video.view_team', bottom: true },
-  { href: '/feedback', label: '質問', icon: 'message', bottom: true },
-  { href: '/skills', label: 'スキル', icon: 'award', bottom: true },
+  { href: '/feedback', label: '質問', icon: 'message' },
+  { href: '/skills', label: 'スキル', icon: 'award' },
   { href: '/measurements', label: '測定', icon: 'ruler' },
   { href: '/notifications', label: 'お知らせ', icon: 'bell' },
   { href: '/members', label: '名簿', icon: 'users' },

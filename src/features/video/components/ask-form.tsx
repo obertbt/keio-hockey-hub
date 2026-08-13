@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Field, FormMessage, Select, TextArea, TextInput } from '@/components/ui/field';
+import { TimecodeInput } from '@/components/ui/timecode-input';
 import { askQuestion, createClip, type VideoActionState } from '@/features/video/actions';
 import { QUESTION_TEMPLATES } from '@/lib/labels';
 import { formatSecondsToTimecode } from '@/lib/storage/validation';
@@ -72,11 +73,11 @@ export function AskForm({
             {clipState.success ? <FormMessage tone="success">{clipState.success}</FormMessage> : null}
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="開始位置" htmlFor="start" required hint="例: 12:34">
-                <TextInput id="start" name="start" required placeholder="12:34" inputMode="numeric" />
+              <Field label="開始位置" htmlFor="start" required>
+                <TimecodeInput id="start" name="start" required placeholder="1234" />
               </Field>
-              <Field label="終了位置" htmlFor="end" required hint="例: 12:48">
-                <TextInput id="end" name="end" required placeholder="12:48" inputMode="numeric" />
+              <Field label="終了位置" htmlFor="end" required>
+                <TimecodeInput id="end" name="end" required placeholder="1248" />
               </Field>
             </div>
 

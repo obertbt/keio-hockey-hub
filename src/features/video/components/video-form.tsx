@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Field, FormMessage, Select, TextArea, TextInput } from '@/components/ui/field';
+import { TimecodeInput } from '@/components/ui/timecode-input';
 import { registerVideo, type VideoActionState } from '@/features/video/actions';
 import type { EventRow } from '@/types/database.types';
 
@@ -55,9 +56,9 @@ export function VideoForm({ events }: { events: EventRow[] }) {
         <Field
           label="動画の長さ"
           htmlFor="duration"
-          hint="「1:02:03」または秒数。入れておくと、範囲を指定するときに間違いを防げます"
+          hint="入れておくと、位置を指定するときに間違いを防げます"
         >
-          <TextInput id="duration" name="duration" placeholder="1:02:03" />
+          <TimecodeInput id="duration" name="duration" placeholder="6000" />
         </Field>
 
         <Field label="撮影日" htmlFor="recorded_on">

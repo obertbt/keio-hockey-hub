@@ -1,6 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AlertTriangle, Award, Bell, CalendarDays, Check, ChevronRight, Ruler, Target } from 'lucide-react';
+import {
+  AlertTriangle,
+  Award,
+  Bell,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  NotebookPen,
+  Ruler,
+  Target,
+  Video,
+} from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, EmptyState } from '@/components/ui/card';
@@ -47,6 +58,21 @@ async function PlayerToday() {
         <p className="text-xs text-[--color-muted]">{formatDateLabel(data.date)}</p>
         <h1 className="mt-1 text-xl font-bold">{headline}</h1>
       </header>
+
+      {/*
+        学生が毎日触るのは日報と動画の2つ。
+        探させないよう、いちばん上に大きく置く。
+        下のカード群は「見るもの」で、ここは「書くもの」。
+      */}
+      <div className="grid grid-cols-2 gap-3">
+        <WriteLink
+          href="/report"
+          label="日報を書く"
+          icon={<NotebookPen size={22} aria-hidden />}
+          done={data.todayState.hasReport}
+        />
+        <WriteLink href="/videos" label="動画に書き込む" icon={<Video size={22} aria-hidden />} />
+      </div>
 
       {data.unreadNotificationCount > 0 ? (
         <Link
@@ -128,7 +154,15 @@ async function PlayerToday() {
       </Card>
 
       <Card>
-        <CardHeader title="今日の予定" icon={<CalendarDays size={16} aria-hidden />} />
+        <CardHeader
+          title="今日の予定"
+          icon={<CalendarDays size={16} aria-hidden />}
+          action={
+            <Link href="/schedule" className="text-keio-700 dark:text-keio-300 text-sm underline">
+              予定一覧
+            </Link>
+          }
+        />
         {data.events.length === 0 ? (
           <EmptyState>今日の予定は登録されていません。</EmptyState>
         ) : (
@@ -364,6 +398,41 @@ function RecordLink({ href, label, done }: { href: string; label: string; done: 
         )}
       </Link>
     </li>
+  );
+}
+
+/**
+ * 「今日、書くもの」への入口。
+ *
+ * 一覧の中の1行ではなく、面で置く。
+ * 指1本で押せる大きさにして、探す手間を無くす。
+ */
+function WriteLink({
+  href,
+  label,
+  icon,
+  done,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  /** 済んでいることが分かると、二度手間が減る。 */
+  done?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="bg-action-500/10 text-action-700 hover:bg-action-500/20 dark:text-action-400 flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-4 text-sm font-medium"
+    >
+      {icon}
+      {label}
+      {done ? (
+        <span className="flex items-center gap-1 text-xs font-normal text-emerald-700 dark:text-emerald-400">
+          <Check size={12} aria-hidden />
+          今日のぶんは提出済み
+        </span>
+      ) : null}
+    </Link>
   );
 }
 

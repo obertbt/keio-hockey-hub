@@ -152,21 +152,81 @@ export function validateClipRange(
   return { ok: true };
 }
 
-/** 'MM:SS' / 'HH:MM:SS' を秒に直す。仮想クリップの入力で使う。 */
+/**
+ * 動画の再生位置を秒に直す。
+ *
+ * **数字キーパッドには `:` が無い。**
+ * `inputMode="numeric"` を指定していたため、
+ * スマートフォンから `12:34` と打てなかった（実際に詰まった）。
+ *
+ * 区切り記号を打たなくてよいことにする。
+ *
+ *   "5"       →     5秒
+ *   "90"      →    90秒（1:30）
+ *   "130"     →  1分30秒
+ *   "1234"    → 12分34秒
+ *   "10230"   →  1時間02分30秒
+ *
+ * 2桁までは秒。3桁以上は右から2桁ずつ「秒・分・時」と読む。
+ * 打つ側は時計の表示をそのまま入れればよい。
+ *
+ * 区切りを打てる環境のために `:` も受ける。
+ * 日本語入力では全角の `：` になりがちなので、それも受ける。
+ * 「12分34秒」もそのまま通す。**入力の形で断らない。**
+ */
 export function parseTimecodeToSeconds(input: string): number | null {
-  const trimmed = input.trim();
-  if (trimmed === '') return null;
+  // 全角数字と全角コロンをそろえる
+  const normalized = input
+    .trim()
+    .replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/：/g, ':')
+    .replace(/\s+/g, '');
 
-  const parts = trimmed.split(':');
-  if (parts.some((part) => part === '' || !/^\d+(\.\d+)?$/.test(part))) return null;
+  if (normalized === '') return null;
 
-  const numbers = parts.map(Number);
-  if (numbers.some((value) => !Number.isFinite(value))) return null;
+  // 「12分34秒」「1時間2分」のような書き方
+  const japanese = normalized.match(/^(?:(\d+)時間?)?(?:(\d+)分)?(?:(\d+)秒)?$/);
+  if (japanese && (japanese[1] ?? japanese[2] ?? japanese[3]) !== undefined) {
+    const hours = Number(japanese[1] ?? 0);
+    const minutes = Number(japanese[2] ?? 0);
+    const seconds = Number(japanese[3] ?? 0);
+    if (minutes >= 60 || seconds >= 60) return null;
+    return hours * 3600 + minutes * 60 + seconds;
+  }
 
-  if (numbers.length === 1) return numbers[0] ?? null;
-  if (numbers.length === 2) return (numbers[0] ?? 0) * 60 + (numbers[1] ?? 0);
-  if (numbers.length === 3) return (numbers[0] ?? 0) * 3600 + (numbers[1] ?? 0) * 60 + (numbers[2] ?? 0);
-  return null;
+  if (normalized.includes(':')) {
+    const parts = normalized.split(':');
+    if (parts.length > 3) return null;
+    if (parts.some((part) => part === '' || !/^\d+(\.\d+)?$/.test(part))) return null;
+
+    const numbers = parts.map(Number);
+    if (numbers.some((value) => !Number.isFinite(value))) return null;
+
+    // 分と秒は 60 未満。ここを通すと 1:70 が 130秒 になり、書いた人の意図と食い違う。
+    if (numbers.length >= 2 && (numbers[numbers.length - 1] ?? 0) >= 60) return null;
+    if (numbers.length === 3 && (numbers[1] ?? 0) >= 60) return null;
+
+    if (numbers.length === 1) return numbers[0] ?? null;
+    if (numbers.length === 2) return (numbers[0] ?? 0) * 60 + (numbers[1] ?? 0);
+    return (numbers[0] ?? 0) * 3600 + (numbers[1] ?? 0) * 60 + (numbers[2] ?? 0);
+  }
+
+  // 区切り無し。右から2桁ずつ「秒・分・時」。
+  if (!/^\d+$/.test(normalized)) return null;
+  if (normalized.length > 6) return null;
+  if (normalized.length <= 2) return Number(normalized);
+
+  const seconds = Number(normalized.slice(-2));
+  const minutes = Number(normalized.slice(-4, -2));
+  const hasHours = normalized.length > 4;
+  const hours = hasHours ? Number(normalized.slice(0, -4)) : 0;
+
+  // 60 未満に収まっていないといけないのは、先頭より後ろの単位だけ。
+  // 先頭は「90分」のような書き方を許す（'60:00' を通すのと同じ扱い）。
+  if (seconds >= 60) return null;
+  if (hasHours && minutes >= 60) return null;
+
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
 /** 秒を 'M:SS' 表記にする。 */

@@ -236,3 +236,72 @@ describe('parseTimecodeToSeconds', () => {
     expect(parseTimecodeToSeconds(formatSecondsToTimecode(754))).toBe(754);
   });
 });
+
+describe('区切りを打てない環境からの入力（数字キーパッド）', () => {
+  it('数字だけで分秒を入れられる', () => {
+    // 数字キーパッドには : が無い。時計の表示をそのまま打てばよい。
+    expect(parseTimecodeToSeconds('1234')).toBe(754);
+    expect(parseTimecodeToSeconds('130')).toBe(90);
+    expect(parseTimecodeToSeconds('005')).toBe(5);
+  });
+
+  it('2桁までは秒として読む', () => {
+    expect(parseTimecodeToSeconds('5')).toBe(5);
+    expect(parseTimecodeToSeconds('90')).toBe(90);
+  });
+
+  it('時間まで入れられる', () => {
+    expect(parseTimecodeToSeconds('10230')).toBe(3750);
+    expect(parseTimecodeToSeconds('120000')).toBe(43200);
+  });
+
+  it('あり得ない分秒は断る（黙って別の時刻にしない）', () => {
+    expect(parseTimecodeToSeconds('170')).toBeNull();
+    expect(parseTimecodeToSeconds('9999')).toBeNull();
+    expect(parseTimecodeToSeconds('1:70')).toBeNull();
+  });
+
+  it('長すぎる数字は断る', () => {
+    expect(parseTimecodeToSeconds('1234567')).toBeNull();
+  });
+});
+
+describe('日本語入力からの揺れ', () => {
+  it('全角の数字とコロンを受ける', () => {
+    expect(parseTimecodeToSeconds('１２：３４')).toBe(754);
+    expect(parseTimecodeToSeconds('１２３４')).toBe(754);
+  });
+
+  it('「12分34秒」のような書き方も受ける', () => {
+    expect(parseTimecodeToSeconds('12分34秒')).toBe(754);
+    expect(parseTimecodeToSeconds('12分')).toBe(720);
+    expect(parseTimecodeToSeconds('45秒')).toBe(45);
+    expect(parseTimecodeToSeconds('1時間2分3秒')).toBe(3723);
+  });
+
+  it('前後の空白は気にしない', () => {
+    expect(parseTimecodeToSeconds('  12:34  ')).toBe(754);
+  });
+
+  it('壊れているものは受けない', () => {
+    expect(parseTimecodeToSeconds('12分70秒')).toBeNull();
+    expect(parseTimecodeToSeconds('あ')).toBeNull();
+  });
+});
+
+describe('先頭の単位は 60 を超えてよい', () => {
+  it('区切りありの 60:00 は 1時間', () => {
+    expect(parseTimecodeToSeconds('60:00')).toBe(3600);
+    expect(parseTimecodeToSeconds('90:00')).toBe(5400);
+  });
+
+  it('区切り無しでも同じ読み方', () => {
+    expect(parseTimecodeToSeconds('6000')).toBe(3600);
+    expect(parseTimecodeToSeconds('9000')).toBe(5400);
+  });
+
+  it('後ろの単位は 60 未満でないと断る', () => {
+    expect(parseTimecodeToSeconds('1070')).toBeNull();
+    expect(parseTimecodeToSeconds('16000')).toBeNull();
+  });
+});

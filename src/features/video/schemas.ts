@@ -56,7 +56,8 @@ export const durationSchema = z
     if (seconds === null || seconds <= 0) {
       ctx.addIssue({
         code: 'custom',
-        message: '動画の長さは「1:02:03」または秒数で入力してください。',
+        message:
+          '動画の長さを読み取れません。時計の表示のまま、数字だけで入れてください（例: 6000 → 60:00）。',
       });
       return z.NEVER;
     }

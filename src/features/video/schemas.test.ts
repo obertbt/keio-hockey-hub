@@ -43,10 +43,20 @@ describe('動画の登録', () => {
 });
 
 describe('動画の長さ（人が入力する）', () => {
-  it('タイムコードでも秒でも受け取る', () => {
+  it('タイムコードで受け取る', () => {
     expect(durationSchema.parse('1:02:03')).toBe(3723);
     expect(durationSchema.parse('60:00')).toBe(3600);
-    expect(durationSchema.parse('3600')).toBe(3600);
+  });
+
+  /**
+   * 区切り無しは、位置の入力と同じ読み方にそろえる。
+   * 「長さは秒、位置は時計」と使い分けると、打つ側が覚えられない。
+   * どちらも時計の表示をそのまま入れればよい、で通す。
+   */
+  it('区切り無しは時計の読みにそろえる', () => {
+    expect(durationSchema.parse('6000')).toBe(3600);
+    expect(durationSchema.parse('130')).toBe(90);
+    expect(durationSchema.parse('45')).toBe(45);
   });
 
   it('空欄なら未設定（後から入れられる）', () => {
@@ -77,10 +87,16 @@ describe('仮想クリップの作成（18章）', () => {
     }
   });
 
-  it('秒数で入れてもよい', () => {
-    const result = createClipSchema.safeParse({ ...base, start: '754', end: '768' });
+  it('区切り無しでも入れられる（数字キーパッドから打てる）', () => {
+    const result = createClipSchema.safeParse({ ...base, start: '1234', end: '1248' });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.start).toBe(754);
+  });
+
+  it('2桁までは秒として読む', () => {
+    const result = createClipSchema.safeParse({ ...base, start: '10', end: '30' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.start).toBe(10);
   });
 
   it('終了が開始より前なら断る', () => {
