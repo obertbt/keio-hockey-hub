@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 
+import { ServiceWorkerRegistrar } from '@/components/layout/service-worker';
 import { env } from '@/lib/env';
 
 import './globals.css';
@@ -36,7 +37,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body className="min-h-dvh antialiased">{children}</body>
+      <body className="min-h-dvh antialiased">
+        {children}
+        {/* 0028: ホーム画面に追加できる条件を満たすため、開いた時点で登録する */}
+        <ServiceWorkerRegistrar />
+      </body>
     </html>
   );
 }

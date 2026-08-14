@@ -94,6 +94,71 @@ export function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer
 }
 
 /**
+ * 公開鍵の形を確かめる（0028）。
+ *
+ * ブラウザは、鍵がおかしいと
+ * `applicationServerKey is not valid` としか言わない。
+ * **何が悪いのかが分からない。** 実際にこれで詰まった。
+ *
+ * 正しい公開鍵は
+ *   * base64url で 87文字前後
+ *   * ほどくと **65バイト**
+ *   * 先頭が **0x04**（圧縮していない楕円曲線の点、という印）
+ *
+ * よくある間違いは「秘密鍵のほうを入れた」。
+ * あちらは 43文字・32バイトなので、長さで見分けられる。
+ * そこまで言えれば、直せる。
+ */
+export type VapidKeyCheck = { ok: true } | { ok: false; reason: string };
+
+export function checkVapidPublicKey(key: string): VapidKeyCheck {
+  const trimmed = key.trim();
+
+  if (trimmed === '') {
+    return { ok: false, reason: '公開鍵が設定されていません。' };
+  }
+
+  if (!/^[A-Za-z0-9\-_]+=*$/.test(trimmed)) {
+    return {
+      ok: false,
+      reason: '鍵に使えない文字が混ざっています。余分な空白や改行ごと貼っていないか確かめてください。',
+    };
+  }
+
+  let bytes: Uint8Array;
+  try {
+    bytes = urlBase64ToUint8Array(trimmed);
+  } catch {
+    return {
+      ok: false,
+      reason: '鍵を読み取れませんでした。貼り付けが途中で切れていないか確かめてください。',
+    };
+  }
+
+  // 秘密鍵は32バイト。入れ違いはこれでほぼ確実に当たる。
+  if (bytes.length === 32) {
+    return {
+      ok: false,
+      reason:
+        '**秘密鍵のほうが入っています。** NEXT_PUBLIC_VAPID_PUBLIC_KEY には、長いほう（87文字くらい）を入れてください。',
+    };
+  }
+
+  if (bytes.length !== 65) {
+    return {
+      ok: false,
+      reason: `鍵の長さが違います（${bytes.length}バイト。正しくは65バイト）。貼り付けが途中で切れていないか確かめてください。`,
+    };
+  }
+
+  if (bytes[0] !== 0x04) {
+    return { ok: false, reason: '鍵の形式が違います。VAPID の公開鍵をそのまま貼り付けてください。' };
+  }
+
+  return { ok: true };
+}
+
+/**
  * 端末の名前。一覧で「どれを消すか」を選べるように。
  *
  * 細かく当てにいかない。当たらなかったときに嘘になるより、

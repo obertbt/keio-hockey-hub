@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkVapidPublicKey,
   describeDevice,
   describePushSupport,
   detectPushSupport,
@@ -111,6 +112,55 @@ describe('鍵の変換', () => {
   it('実際の長さの鍵を通しても落ちない（65バイト）', () => {
     const key = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
     expect(urlBase64ToUint8Array(key)).toHaveLength(65);
+  });
+});
+
+describe('公開鍵の形（0028 で実際に詰まったところ）', () => {
+  // 本物と同じ形（65バイト・先頭 0x04）
+  const VALID = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+  // 秘密鍵と同じ形（32バイト）
+  const PRIVATE_LOOKING = 'YRNUInIt4Zr3D95ZJDyznAR8Yh5xJetaSra2VNwrB8c';
+
+  it('正しい公開鍵は通る', () => {
+    expect(checkVapidPublicKey(VALID)).toEqual({ ok: true });
+  });
+
+  it('前後に空白が付いていても通る', () => {
+    expect(checkVapidPublicKey(`  ${VALID}\n`)).toEqual({ ok: true });
+  });
+
+  it('**秘密鍵を入れ違えたことを言い当てる**', () => {
+    // ブラウザは「applicationServerKey is not valid」としか言わない。
+    // それでは何を直せばいいのか分からない。
+    const result = checkVapidPublicKey(PRIVATE_LOOKING);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('秘密鍵');
+  });
+
+  it('未設定は、そう言う', () => {
+    const result = checkVapidPublicKey('');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('設定されていません');
+  });
+
+  it('途中で切れた鍵は、長さで気づかせる', () => {
+    const result = checkVapidPublicKey(VALID.slice(0, 40));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('バイト');
+  });
+
+  it('使えない文字が混ざっていたら、貼り付けを疑わせる', () => {
+    const result = checkVapidPublicKey('これは鍵ではありません');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('文字');
+  });
+
+  it('どの断り方でも、次にやることが書いてある', () => {
+    for (const bad of ['', PRIVATE_LOOKING, VALID.slice(0, 40), '日本語']) {
+      const result = checkVapidPublicKey(bad);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason.length).toBeGreaterThan(10);
+    }
   });
 });
 

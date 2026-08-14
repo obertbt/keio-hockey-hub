@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FormMessage } from '@/components/ui/field';
 import { subscribeToPush, unsubscribeFromPush, type PushActionState } from '@/features/notifications/actions';
 import {
+  checkVapidPublicKey,
   describeDevice,
   describePushSupport,
   detectPushSupport,
@@ -127,7 +128,14 @@ export function PushSetup({ vapidPublicKey }: { vapidPublicKey: string }) {
       setPending({ endpoint: subscription.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth });
       setSubscribed(true);
     } catch (unexpected) {
-      setMessage(`登録できませんでした（${String(unexpected)}）`);
+      // ここまで来て失敗するのは、たいてい鍵か、追加していない iPhone。
+      // そのまま出すと英語の呪文になるので、心当たりを添える。
+      const detail = String(unexpected);
+      setMessage(
+        detail.includes('applicationServerKey')
+          ? '鍵が正しくないようです。管理者に「通知の設定」から作り直してもらってください。'
+          : `登録できませんでした（${detail}）`,
+      );
     } finally {
       setBusy(false);
     }
@@ -152,11 +160,23 @@ export function PushSetup({ vapidPublicKey }: { vapidPublicKey: string }) {
 
   if (support === null) return <p className="text-sm text-[--color-muted]">確認しています…</p>;
 
-  if (vapidPublicKey === '') {
+  /*
+    鍵がおかしいまま subscribe を呼ぶと、ブラウザは
+    「applicationServerKey is not valid」としか言わない。
+    **何を直せばいいのか分からない。** 実際にそれで詰まった。
+
+    押す前に確かめて、直せる形で伝える。
+  */
+  const keyCheck = checkVapidPublicKey(vapidPublicKey);
+  if (!keyCheck.ok) {
     return (
-      <p className="text-sm text-[--color-muted]">
-        スマートフォンへの通知は、まだ設定されていません（管理者が鍵を登録すると使えます）。
-      </p>
+      <div className="space-y-2">
+        <p className="text-sm">スマートフォンへの通知は、まだ使えません。</p>
+        <p className="text-sm text-amber-900 dark:text-amber-200">{keyCheck.reason}</p>
+        <p className="text-xs text-[--color-muted]">
+          管理者の方は「通知の設定」から鍵を作れます（設定 → 通知の設定）。
+        </p>
+      </div>
     );
   }
 

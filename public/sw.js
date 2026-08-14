@@ -9,13 +9,31 @@
  *
  * ページの中身をためこむ（オフライン対応）ことは、いまはしない。
  * 古い画面が残って「直したのに直っていない」が起きるほうが困る。
- * この Service Worker は通知のためだけに置いている。
+ *
+ * ただし **fetch を受けること自体は必要**。
+ * Chrome は「fetch を扱う Service Worker があること」を
+ * ホーム画面に追加できる条件のひとつにしている。
+ * 無いと、Android で「アプリをインストール」が出てこない。
+ * 実際にそれで追加できなかった。
+ *
+ * そこで、受けるが何もしない（そのまま通す）形にしてある。
+ * 条件は満たしつつ、ためこまない。
  */
 
 // 新しい版を入れたら、待たずに入れ替える。
 // 待たせると、古い版がいつまでも通知を受け取り続ける。
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+/*
+  そのまま通すだけ。ためこまない。
+
+  respondWith を呼ばなければ、ブラウザが普通に取りに行く。
+  ここで加工すると、古い画面が残る事故のもとになる。
+*/
+self.addEventListener('fetch', () => {
+  // 何もしない。「fetch を扱っている」ことだけが要る。
+});
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;
