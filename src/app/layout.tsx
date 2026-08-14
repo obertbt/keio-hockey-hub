@@ -21,7 +21,11 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
   },
   icons: {
-    icon: '/icon-192.png',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    // iPhone は SVG を受け取らないので PNG を渡す
     apple: '/icon-192.png',
   },
 };
@@ -31,7 +35,17 @@ export const viewport: Viewport = {
   initialScale: 1,
   // 入力欄の拡大を止めつつ、利用者の拡大操作は妨げない
   maximumScale: 5,
-  themeColor: '#00317a',
+  /*
+    端末の上端（時刻や電池が出るところ）の色。
+
+    ここは**画面の地の色に合わせる**もので、濃い色を置くと
+    画面の上だけ帯が乗ったように見える。実際そう見えていた。
+    暗い設定で開いている人には、暗いほうを渡す。
+  */
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f2f5fa' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d1425' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

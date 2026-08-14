@@ -53,6 +53,7 @@ describe('認証をかける道', () => {
   it('アイコンにも認証をかけない', () => {
     expect(matcher.test('/icon-192.png')).toBe(false);
     expect(matcher.test('/icon-512.png')).toBe(false);
+    expect(matcher.test('/icon.svg')).toBe(false);
   });
 
   it('組み込みの静的ファイルは、これまでどおり外す', () => {

@@ -18,7 +18,8 @@
     "db:types": "supabase gen types typescript --local > src/types/database.types.ts",
     "db:test": "./scripts/run-db-tests.sh",
     "check": "pnpm type-check && pnpm lint && pnpm test && pnpm build",
-    "vapid": "node scripts/generate-vapid-keys.mjs"
+    "vapid": "node scripts/generate-vapid-keys.mjs",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.980.0",
@@ -57,6 +58,7 @@
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

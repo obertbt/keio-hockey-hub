@@ -428,7 +428,21 @@ pnpm test:e2e      # E2E（Playwright）
 pnpm build         # 本番ビルド
 pnpm db:test       # Migration + RLS + 制約テスト（一時的な PostgreSQL を立てて実行）
 pnpm check         # 型・Lint・単体テスト・ビルドをまとめて
+pnpm icons         # ホーム画面のアイコンを作り直す
 ```
+
+### ホーム画面のアイコン
+
+元の絵は `scripts/generate-icons.mjs` の中の SVG だけです。
+`public/icon.svg` と `public/icon-192.png` / `icon-512.png` は、そこから作ります。
+PNG を直接描き換えると、次に直す人が「どれが本物か」を探すことになります。
+
+案を差し替えるときは、同じファイルの `DESIGN` を書き換えて `pnpm icons` を流します
+（`ivory` / `ink` / `sandbars` / `sand` / `rose`。いまは `sandbars`）。
+`manifest.json` の `background_color`（起動直後の一瞬に出る色）も一緒に揃います。
+
+Android は端末ごとに違う形へ勝手に切り抜くので（maskable）、
+絵は外側 20% が切られる前提で中央に置いてあります。
 
 ### テストの構成
 
