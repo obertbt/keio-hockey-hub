@@ -1133,6 +1133,11 @@ export type Database = {
     };
     Views: Record<never, never>;
     Functions: {
+      /**
+       * ログインしている人の素性を1回で返す（0029）。
+       * 中身の形は `parseSessionRow` 側で確かめるので、ここでは unknown で受ける。
+       */
+      current_session: { Args: Record<string, never>; Returns: unknown };
       /** 論理削除は RPC で行う（0013）。SELECT ポリシーとの兼ね合いのため。 */
       soft_delete_video: { Args: { p_video_id: string }; Returns: undefined };
       soft_delete_video_clip: { Args: { p_clip_id: string }; Returns: undefined };

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Link } from '@/components/ui/link';
 
 import { Card } from '@/components/ui/card';
 import { ConditionForm } from '@/features/daily/components/condition-form';

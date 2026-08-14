@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Link } from '@/components/ui/link';
 import { ChevronRight, Scissors, Video as VideoIcon } from 'lucide-react';
 
 import { countCommentsByVideo } from '@/features/video/board-queries';

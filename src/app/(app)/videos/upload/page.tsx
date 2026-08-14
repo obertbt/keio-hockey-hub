@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Link } from '@/components/ui/link';
 
 import { Card, CardHeader } from '@/components/ui/card';
 import { VideoUploader } from '@/features/upload/components/video-uploader';

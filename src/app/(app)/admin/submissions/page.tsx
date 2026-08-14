@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Link } from '@/components/ui/link';
 import { Check, Lock, Minus } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';

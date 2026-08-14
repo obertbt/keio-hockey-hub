@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { env } from '@/lib/env';
+import { readUserId } from '@/lib/supabase/claims';
 import type { Database } from '@/types/database.types';
 
 /** ログインなしで開けるパス。 */
@@ -44,13 +45,21 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  /*
+    0029: ここは `getUser()` を呼んでいた。
+    あれは毎回 Auth サーバーへの往復が入る。**すべての要求に**入る。
+    次の画面を先読みするだけでも往復が1回増えるので、
+    先読みが効かず、押してから出るまでがそのぶん長かった。
+
+    `getClaims()` は Cookie の中の署名をその場で確かめる。
+    鍵が公開鍵方式なら通信は起きない。
+    共通鍵方式のままなら、これまでどおり聞きに行く（緩くはならない）。
+  */
+  const userId = await readUserId(supabase);
 
   const { pathname } = request.nextUrl;
 
-  if (!user && !isPublicPath(pathname)) {
+  if (!userId && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     loginUrl.search = '';
@@ -59,7 +68,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && pathname === '/login') {
+  if (userId && pathname === '/login') {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = '/today';
     homeUrl.search = '';

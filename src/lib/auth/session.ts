@@ -3,110 +3,41 @@ import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 
-import { createClient, getCurrentUser } from '@/lib/supabase/server';
-import type { Permission, PermissionOverrides } from '@/lib/auth/permissions';
-import { hasPermission, isPermission, isStaffRole } from '@/lib/auth/permissions';
-import type { RoleCode } from '@/types/database.types';
+import { createClient } from '@/lib/supabase/server';
+import type { Permission } from '@/lib/auth/permissions';
+import { hasPermission, isStaffRole } from '@/lib/auth/permissions';
+import { parseSessionRow, type SessionRow } from '@/lib/auth/session-row';
 
 /**
  * ログイン中の利用者と、その所属チームでの立場。
  *
  * 画面と Server Action はここを起点にする。
  * 「権限を確認する場所」を1か所にまとめるための層（75章）。
+ *
+ * 中身は `current_session()` が返すものそのまま（0029）。
+ * 同じ形を2か所に書くと、片方だけ直したときに気づけない。
  */
-export interface AppSession {
-  userId: string;
-  profileId: string;
-  fullName: string;
-  displayName: string;
-  email: string | null;
-  avatarUrl: string | null;
-  teamId: string;
-  teamName: string;
-  teamMemberId: string;
-  role: RoleCode;
-  overrides: PermissionOverrides;
-}
+export type AppSession = SessionRow;
 
 /**
  * 現在のセッションを組み立てる。まだチームに属していなければ null。
  *
  * React の cache でリクエスト内は1回だけ引く。
- * 1画面で何度も呼んでも DB アクセスは増えない。
+ * 1画面で何度も呼んでも問い合わせは増えない。
+ *
+ * 0029: ここは profiles → team_members → member_permissions と
+ * 3回に分けて聞いていた。前のこたえが無いと次を聞けないので、
+ * 往復3回ぶんがそのまま待ち時間になっていた。
+ * 1回で返す関数を用意して、1往復にした。
  */
 export const getAppSession = cache(async (): Promise<AppSession | null> => {
-  const user = await getCurrentUser();
-  if (!user) return null;
-
   const supabase = await createClient();
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, full_name, display_name, email, avatar_url')
-    .eq('user_id', user.id)
-    .is('deleted_at', null)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('current_session');
+  if (error) return null;
 
-  if (!profile) return null;
-
-  // 在籍中の所属を1件取る。将来チームを複数持つ場合はここで選択させる。
-  const { data: membership } = await supabase
-    .from('team_members')
-    .select('id, team_id, role_code, teams(display_name)')
-    .eq('profile_id', profile.id)
-    .eq('status', 'active')
-    .is('deleted_at', null)
-    .limit(1)
-    .maybeSingle();
-
-  if (!membership) return null;
-
-  const { data: overrideRows } = await supabase
-    .from('member_permissions')
-    .select('permission_code, granted')
-    .eq('team_member_id', membership.id);
-
-  const overrides: PermissionOverrides = {};
-  for (const row of overrideRows ?? []) {
-    if (isPermission(row.permission_code)) {
-      overrides[row.permission_code] = row.granted;
-    }
-  }
-
-  // teams は 1対1 の埋め込みだが、型の上では配列にもなり得るため両方を受ける。
-  const teamRelation = membership.teams as unknown;
-  const teamName = extractTeamName(teamRelation);
-
-  return {
-    userId: user.id,
-    profileId: profile.id,
-    fullName: profile.full_name,
-    displayName: profile.display_name ?? profile.full_name,
-    email: profile.email,
-    avatarUrl: profile.avatar_url,
-    teamId: membership.team_id,
-    teamName,
-    teamMemberId: membership.id,
-    role: membership.role_code,
-    overrides,
-  };
+  return parseSessionRow(data);
 });
-
-function extractTeamName(relation: unknown): string {
-  if (Array.isArray(relation)) {
-    const first: unknown = relation[0];
-    if (first && typeof first === 'object' && 'display_name' in first) {
-      const value = (first as { display_name: unknown }).display_name;
-      if (typeof value === 'string') return value;
-    }
-    return '';
-  }
-  if (relation && typeof relation === 'object' && 'display_name' in relation) {
-    const value = (relation as { display_name: unknown }).display_name;
-    if (typeof value === 'string') return value;
-  }
-  return '';
-}
 
 /**
  * ログイン必須のページで使う。未ログインならログイン画面へ送る。

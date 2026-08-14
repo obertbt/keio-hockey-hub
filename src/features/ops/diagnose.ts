@@ -2,7 +2,7 @@ import 'server-only';
 
 import { getCoachDashboard, getPlayerDashboard } from '@/features/dashboard/queries';
 import { getAppSession, isStaff } from '@/lib/auth/session';
-import { createClient, getCurrentUser } from '@/lib/supabase/server';
+import { createClient, getCurrentUserId } from '@/lib/supabase/server';
 
 /**
  * サーバー側から見た自己診断（79章の運用の話）。
@@ -76,8 +76,8 @@ export async function diagnose(): Promise<DiagnosisItem[]> {
   });
 
   // 3. ログインしているか
-  const user = await getCurrentUser();
-  if (!user) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
     items.push({
       label: 'ログインしているか',
       state: 'skip',
@@ -91,7 +91,7 @@ export async function diagnose(): Promise<DiagnosisItem[]> {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id, full_name')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .is('deleted_at', null)
     .maybeSingle();
 

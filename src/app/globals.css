@@ -62,8 +62,112 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  /* スマートフォンでの誤操作を減らす */
+  /*
+    端末が勝手に出す灰色の四角を消す。
+    ただし**代わりを必ず置くこと**。
+    ここを消したまま押したときの見た目を用意していなかったので、
+    押しても何も起きない画面になっていた（下の :active がその代わり）。
+  */
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+  押したことが分かるようにする。
+  hover はスマートフォンには無い。指で触るものは :active でしか反応できない。
+
+  やることは2つだけ。
+    * ほんの少し沈む（scale）
+    * 少し暗くなる（brightness）
+  0.06 秒。速いほど「反応した」に見える。遅いと今度は動作が重く見える。
+*/
+@media (hover: none) {
+  a:active,
+  button:active:not(:disabled),
+  [role='button']:active,
+  label:active {
+    transform: scale(0.97);
+    filter: brightness(0.94);
+  }
+}
+
+a,
+button,
+[role='button'],
+label,
+summary {
+  /*
+    ダブルタップで拡大する、という端末の待ち時間を無くす。
+    待っているぶん、押してから反応するまでが遅れて見える。
+  */
+  touch-action: manipulation;
+  transition:
+    transform 0.06s ease-out,
+    filter 0.06s ease-out,
+    background-color 0.12s ease-out;
+}
+
+/* 動きを減らす設定にしている人には、沈ませない。色だけで伝える。 */
+@media (prefers-reduced-motion: reduce) {
+  a,
+  button,
+  [role='button'],
+  label,
+  summary {
+    transition: filter 0.06s ease-out;
+  }
+
+  @media (hover: none) {
+    a:active,
+    button:active:not(:disabled),
+    [role='button']:active,
+    label:active {
+      transform: none;
+    }
+  }
+}
+
+/*
+  移動中であることを出す（components/ui/link.tsx）。
+
+  押したリンクを薄くする。押したものが分かるように。
+  `:has` は、中にこの印が入っているリンクだけを拾う。
+*/
+a:has([data-link-pending]) {
+  opacity: 0.55;
+}
+
+/*
+  画面のいちばん上に細い帯。
+  端から端まで行かせない。**8割で止めて待つ。**
+  10割まで行くと「終わった」に見えるが、実際にはまだ待っているため。
+*/
+.route-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 60;
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  background: var(--color-action-500);
+  animation: route-progress 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes route-progress {
+  from {
+    transform: scaleX(0.02);
+  }
+  to {
+    transform: scaleX(0.8);
+  }
+}
+
+/* 動きを減らす設定の人には、動かさずに置く。 */
+@media (prefers-reduced-motion: reduce) {
+  .route-progress {
+    animation: none;
+    transform: scaleX(0.4);
+  }
 }
 
 /* 入力欄の文字は 16px を下回らせない。iOS で拡大されてしまうため。 */

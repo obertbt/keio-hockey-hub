@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '@/components/ui/link';
 import { useFormStatus } from 'react-dom';
 import { Lock, MessageSquare, Users } from 'lucide-react';
 

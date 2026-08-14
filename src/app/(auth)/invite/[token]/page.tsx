@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Link } from '@/components/ui/link';
 
 import { Card, CardHeader } from '@/components/ui/card';
 import { AcceptForm } from '@/features/invite/components/accept-form';

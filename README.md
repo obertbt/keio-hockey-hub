@@ -42,6 +42,7 @@ Notion や Google スプレッドシートで分かれている運営を1つに�
 | 追加    | 日報を8項目に絞る／コーチの返事を読むまで閉じない                   | ✅ 完了           |
 | 追加    | 通知が届かなかったのを直す（RLS と insert().select() の噛み合わせ） | ✅ 完了           |
 | 追加    | スマートフォンに通知を届ける（Web Push。ロック画面に出る）          | ✅ 完了           |
+| 追加    | 押した手ごたえを出す／画面が出るまでの往復を5回から1回へ            | ✅ 完了           |
 
 進め方の詳細は [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)、
 細かい作業一覧は [TASKS.md](TASKS.md) にあります。
@@ -148,7 +149,7 @@ Vercel    …… アプリの置き場所。GitHub とつなぐだけ
 
 分割の境目は migration の切れ目に置いてあるので、
 順に流せば1ファイル版とまったく同じ結果になります。
-（1ファイル版との構造の一致と、DB テスト18種の通過を確認済み）
+（1ファイル版との構造の一致と、DB テスト19種の通過を確認済み）
 
 同じクエリ画面を使い回して構いません。**毎回、前の中身を消してから**貼ってください。
 
@@ -233,6 +234,20 @@ Vercel が出した URL（`https://～.vercel.app`）を控えて、2か所に�
 
 > **ホーム画面に追加**しておくと、アドレスバーが消えて実際の使い勝手に近くなります。
 > スマートフォンで片手で使う前提の作りなので、そちらでも確かめてみてください。
+
+### 手順6: 鍵の方式を切り替える（速くなる・1分）
+
+Supabase の **Authentication → JWT Keys** を開いて、
+公開鍵方式（ECC / RSA）へ切り替えます。
+
+これをすると、**画面を出すたびの往復が2回減ります。**
+ログインしている人かどうかを、Supabase へ聞きに行かずに
+手元で確かめられるようになるためです。
+
+切り替えなくても動きます。そのときは、いままでどおり毎回聞きに行きます
+（安全性は変わりません。速さだけの話です）。
+理由は [docs/responsiveness.md](docs/responsiveness.md) と
+[docs/security.md](docs/security.md) の 17-8 に書きました。
 
 ---
 
@@ -488,6 +503,7 @@ pnpm db:types
 | [docs/video-architecture.md](docs/video-architecture.md) | 3種類の動画の扱い、仮想クリップ                   |
 | [docs/storage.md](docs/storage.md)                       | R2、Presigned URL、ファイルの一生                 |
 | [docs/capacity-planning.md](docs/capacity-planning.md)   | 容量の見積もりと上限                              |
+| [docs/responsiveness.md](docs/responsiveness.md)         | 速さと、押した手ごたえ                            |
 | [docs/security.md](docs/security.md)                     | 守ること、守り方                                  |
 | [docs/deployment.md](docs/deployment.md)                 | 公開手順                                          |
 | [docs/decisions/](docs/decisions/)                       | 設計判断の記録（ADR）                             |
