@@ -220,6 +220,10 @@
       （ブラウザは applicationServerKey is not valid としか言わない）
 - [x] **fetch を扱う Service Worker にする**（無いと Chrome が追加させてくれない）
 - [x] アプリを開いた時点で Service Worker を登録する（ボタンを押すまで待たない）
+- [x] **manifest.json と sw.js を認証の対象から外す**
+      （Chrome は manifest をログイン情報なしで取りに行く。
+      ログイン画面へ飛ばされ、アプリと認識されず「ショートカットを作成」になっていた）
+- [x] proxy の matcher を、実際のソースを読んでテストする
 - [ ] 通知を受け取る種類を選ぶ（いまは全部届く）
 - [ ] 夜間は送らない（時間帯の設定）
 
