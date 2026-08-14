@@ -3,9 +3,11 @@ import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 
+import { readUserId } from '@/lib/supabase/claims';
 import { createClient } from '@/lib/supabase/server';
 import type { Permission } from '@/lib/auth/permissions';
 import { hasPermission, isStaffRole } from '@/lib/auth/permissions';
+import { destinationWithoutSession } from '@/lib/auth/public-paths';
 import { parseSessionRow, type SessionRow } from '@/lib/auth/session-row';
 
 /**
@@ -33,21 +35,60 @@ export type AppSession = SessionRow;
 export const getAppSession = cache(async (): Promise<AppSession | null> => {
   const supabase = await createClient();
 
+  /*
+    先に「そもそもログインしているか」を見る。
+
+    ここを飛ばすと、ログインしていない人の要求が
+    `current_session()` まで届いて「権限がありません」で落ちる。
+    それは**エラーではなく、ただの未ログイン**なので、
+    区別できる形にしておく。
+
+    署名の確認はその場で終わる（0029）ので、この1行に往復は無い。
+  */
+  const userId = await readUserId(supabase);
+  if (!userId) return null;
+
   const { data, error } = await supabase.rpc('current_session');
-  if (error) return null;
+
+  /*
+    **ここで null を返してはいけない。**
+
+    null は「まだ部員として登録されていない」という意味に使っている。
+    データベース側の不具合まで null にすると、
+    ログインできている人が「未ログイン扱い」になり、
+      proxy「ログイン済みだから /today へ」
+      画面「素性が取れないから /login へ」
+    と互いに送り返し合って、**画面が開かなくなる**。
+    実際にそうなった（0029 を流す前のデプロイ）。
+
+    直せる形で、はっきり止める。
+  */
+  if (error) {
+    throw new Error(
+      error.code === 'PGRST202'
+        ? 'データベースの更新がまだ済んでいません。Supabase の SQL Editor で supabase/updates/0029.sql を実行してください。'
+        : `ログイン情報を読み取れませんでした（${error.code ?? 'unknown'}）。`,
+    );
+  }
 
   return parseSessionRow(data);
 });
 
 /**
- * ログイン必須のページで使う。未ログインならログイン画面へ送る。
+ * ログイン必須のページで使う。
+ *
+ * 行き先を2つに分ける。ここを1つにすると、送り返し合いになる。
+ *   * ログインしていない      → ログイン画面
+ *   * ログインはできたが部員でない → 説明の画面（proxy が /today へ戻さない場所）
  */
 export async function requireSession(): Promise<AppSession> {
   const session = await getAppSession();
-  if (!session) {
-    redirect('/login');
-  }
-  return session;
+  if (session) return session;
+
+  const supabase = await createClient();
+  const userId = await readUserId(supabase);
+
+  redirect(destinationWithoutSession(userId !== null));
 }
 
 /**

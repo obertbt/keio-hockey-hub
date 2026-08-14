@@ -2,15 +2,9 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { env } from '@/lib/env';
+import { isPublicPath } from '@/lib/auth/public-paths';
 import { readUserId } from '@/lib/supabase/claims';
 import type { Database } from '@/types/database.types';
-
-/** ログインなしで開けるパス。 */
-const PUBLIC_PATHS = ['/login', '/reset-password', '/invite', '/auth', '/setup-check'];
-
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-}
 
 /**
  * セッション Cookie の更新と、未ログイン時の振り分けを行う。
