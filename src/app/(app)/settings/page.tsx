@@ -7,12 +7,19 @@ import { NavIcon } from '@/components/layout/nav-icon';
 import { MAIN_NAV } from '@/components/layout/nav-links';
 import { ROLE_LABELS, PERMISSION_LABELS, PERMISSIONS } from '@/lib/auth/permissions';
 import { can, requireSession } from '@/lib/auth/session';
+import { PushSetup } from '@/features/notifications/components/push-setup';
+import { RemoveDeviceButton } from '@/features/notifications/components/remove-device';
+import { listMyPushDevices } from '@/features/notifications/queries';
 import { env, limits } from '@/lib/env';
+import { formatDateLabel } from '@/lib/datetime';
 
 export const metadata: Metadata = { title: '設定' };
 
 export default async function SettingsPage() {
   const session = await requireSession();
+
+  // 自分の端末だけが返る（RLS がそう決めている）
+  const devices = await listMyPushDevices();
 
   return (
     <div className="space-y-4">
@@ -38,6 +45,33 @@ export default async function SettingsPage() {
             },
           )}
         </ul>
+      </Card>
+
+      {/* 0028: スマートフォンに通知を届ける */}
+      <Card>
+        <CardHeader
+          title="スマートフォンへの通知"
+          description="コーチからの返事や、名前を呼ばれた書き込みが、ロック画面に出ます。"
+        />
+        <PushSetup vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+        {devices.length > 0 ? (
+          <div className="mt-3 border-t border-[--color-border] pt-3">
+            <p className="mb-2 text-xs text-[--color-muted]">通知を受け取る端末</p>
+            <ul className="space-y-1.5">
+              {devices.map((device) => (
+                <li key={device.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span>
+                    {device.label ?? 'この端末'}
+                    <span className="ml-2 text-xs text-[--color-muted]">
+                      {formatDateLabel(device.created_at.slice(0, 10))}に登録
+                    </span>
+                  </span>
+                  <RemoveDeviceButton subscriptionId={device.id} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Card>
 
       <Card>

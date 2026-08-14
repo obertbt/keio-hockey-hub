@@ -17,7 +17,8 @@
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/database.types.ts",
     "db:test": "./scripts/run-db-tests.sh",
-    "check": "pnpm type-check && pnpm lint && pnpm test && pnpm build"
+    "check": "pnpm type-check && pnpm lint && pnpm test && pnpm build",
+    "vapid": "node scripts/generate-vapid-keys.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.980.0",
@@ -36,6 +37,7 @@
     "recharts": "^3.7.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
+    "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -47,6 +49,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",

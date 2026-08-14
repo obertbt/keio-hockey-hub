@@ -41,6 +41,7 @@ Notion や Google スプレッドシートで分かれている運営を1つに�
 | 追加    | 目標を2段階に（大分類は固定、中目標は各自が書く。申請は廃止）       | ✅ 完了           |
 | 追加    | 日報を8項目に絞る／コーチの返事を読むまで閉じない                   | ✅ 完了           |
 | 追加    | 通知が届かなかったのを直す（RLS と insert().select() の噛み合わせ） | ✅ 完了           |
+| 追加    | スマートフォンに通知を届ける（Web Push。ロック画面に出る）          | ✅ 完了           |
 
 進め方の詳細は [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)、
 細かい作業一覧は [TASKS.md](TASKS.md) にあります。
@@ -139,7 +140,7 @@ Vercel    …… アプリの置き場所。GitHub とつなぐだけ
 
 **あとから migration が増えたときは、増えたぶんだけ流せば済みます。**
 `supabase/updates/` に、1つずつ・コメントを落とした短い版を置いてあります。
-（例: 0027 だけなら 1万文字。同じ結果になることをテストで確かめてあります）
+（例: 0028 だけなら 4千文字。同じ結果になることをテストで確かめてあります）
 
 `parts/` は最初にまとめて流す用です。
 1ファイル版（`supabase/bundled.sql`）は19万文字あり、
@@ -147,7 +148,7 @@ Vercel    …… アプリの置き場所。GitHub とつなぐだけ
 
 分割の境目は migration の切れ目に置いてあるので、
 順に流せば1ファイル版とまったく同じ結果になります。
-（1ファイル版との構造の一致と、DB テスト17種の通過を確認済み）
+（1ファイル版との構造の一致と、DB テスト18種の通過を確認済み）
 
 同じクエリ画面を使い回して構いません。**毎回、前の中身を消してから**貼ってください。
 
@@ -466,6 +467,7 @@ pnpm db:types
 | [docs/workflows.md](docs/workflows.md)                   | ログイン・1日の流れ・動画の掲示板                 |
 | [docs/goals.md](docs/goals.md)                           | 目標の使い方（2段階・タグ・積み上がり）           |
 | [docs/daily-report.md](docs/daily-report.md)             | 日報の書き方と、コーチとのやり取り                |
+| [docs/push.md](docs/push.md)                             | スマートフォンへの通知（設定と、部員への案内）    |
 | [docs/youtube.md](docs/youtube.md)                       | 部のチャンネルとつなぐ、公開範囲を手で変える      |
 | [docs/import.md](docs/import.md)                         | Import Center の設計                              |
 | [docs/migration-guide.md](docs/migration-guide.md)       | 実際の移行手順                                    |

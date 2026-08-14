@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import type { AppSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
+import { sendPush } from './push';
+
 /**
  * 知らせを送る（0028）。
  *
@@ -85,6 +87,26 @@ export async function sendNotification(
   // 消しに行きたいところだが、notifications の delete は剥奪してある（0015）。
   // 黙って捨てず、呼び元が気づけるように理由を返す。
   if (targetError) return { error: targetError.message };
+
+  /*
+    0028: スマートフォンにも出す。
+
+    アプリ内の通知は「開けば分かる」だけで、開かない人には届かない。
+    ロック画面に出て初めて、返事が届いたことに気づける。
+
+    **ここで失敗しても、アプリ内の通知は成立している。**
+    送れなかったからといって、書き込みや日報を巻き戻さない。
+    端末を登録していない人、鍵を設定していないチームでは
+    何も起きないだけで、それで正しい。
+  */
+  await sendPush(targets, {
+    title: input.title,
+    body: input.body ?? '',
+    url: input.linkPath ?? '/today',
+    // 同じ場所についての通知は、後のもので置き換える。
+    // 開くまでに同じ知らせが5件並ぶ、を避ける。
+    tag: input.linkPath ?? undefined,
+  });
 
   return {};
 }

@@ -41,6 +41,16 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().default('http://localhost:54321'),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).default('missing-anon-key'),
+  /**
+   * スマートフォンへの通知の公開鍵（0028）。
+   *
+   * **これは NEXT_PUBLIC_ でよい、数少ない鍵。**
+   * ブラウザに渡すことが仕様で決まっている（VAPID の公開鍵）。
+   * これだけでは通知を送れない。送るには対になる秘密鍵が要る。
+   *
+   * 秘密鍵は VAPID_PRIVATE_KEY。**そちらには絶対に NEXT_PUBLIC_ を付けない。**
+   */
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().default(''),
 });
 
 /**
@@ -52,7 +62,32 @@ export const env = publicEnvSchema.parse({
   NEXT_PUBLIC_APP_URL: orUndefined(process.env.NEXT_PUBLIC_APP_URL),
   NEXT_PUBLIC_SUPABASE_URL: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_URL),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: orUndefined(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
 });
+
+/** スマートフォンへの通知が使える設定になっているか（設定診断ページ用）。 */
+export function isPushConfigured(): boolean {
+  return (
+    orUndefined(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) !== undefined &&
+    orUndefined(process.env.VAPID_PRIVATE_KEY) !== undefined
+  );
+}
+
+/**
+ * 送るときだけ読む秘密鍵。
+ *
+ * サーバ専用値なので、使う時に確かめる（読み込み時ではない）。
+ * 未設定なら通知を送らないだけで、アプリは動く。
+ */
+export function vapidKeys(): { publicKey: string; privateKey: string; subject: string } | null {
+  const publicKey = orUndefined(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+  const privateKey = orUndefined(process.env.VAPID_PRIVATE_KEY);
+  if (!publicKey || !privateKey) return null;
+
+  // 送信元の連絡先。押し付けの通知だったときに、送り主へ連絡が行くための決まり。
+  const subject = orUndefined(process.env.VAPID_SUBJECT) ?? 'mailto:noreply@example.com';
+  return { publicKey, privateKey, subject };
+}
 
 /** Supabase の設定が実際に入っているか（設定診断ページ用）。 */
 export function isSupabaseConfigured(): boolean {

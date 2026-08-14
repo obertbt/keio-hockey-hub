@@ -270,6 +270,27 @@ export type ReportFeedbackRow = {
   deleted_at: string | null;
 };
 
+/**
+ * スマートフォンへの通知の送り先（0028）。
+ *
+ * endpoint + p256dh + auth の3つで「その端末に通知を出せる」。
+ * **本人以外に読ませない。画面にも返さない。**
+ */
+export type PushSubscriptionRow = {
+  id: string;
+  team_id: string;
+  team_member_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  /** どの端末か、人が見て分かるように。 */
+  label: string | null;
+  last_success_at: string | null;
+  failure_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
 /** 日報のコメントの宛先（0027）。コーチを名指しで呼ぶ。 */
 export type ReportFeedbackMentionRow = {
   id: string;
@@ -954,6 +975,10 @@ export type Database = {
         ReportFeedbackRow,
         Exclude<keyof ReportFeedbackRow, 'team_id' | 'daily_report_id' | 'author_id' | 'body'>
       >;
+      push_subscriptions: TableShape<
+        PushSubscriptionRow,
+        Exclude<keyof PushSubscriptionRow, 'team_id' | 'team_member_id' | 'endpoint' | 'p256dh' | 'auth'>
+      >;
       report_feedback_mentions: TableShape<
         ReportFeedbackMentionRow,
         Exclude<keyof ReportFeedbackMentionRow, 'team_id' | 'report_feedback_id' | 'team_member_id'>
@@ -1139,6 +1164,19 @@ export type Database = {
         }[];
       };
       soft_delete_video_comment: { Args: { p_comment_id: string }; Returns: undefined };
+      /** スマホ通知の送り先（0028）。**service role だけが呼べる。** */
+      list_push_targets: {
+        Args: { p_team_member_ids: string[] };
+        Returns: {
+          subscription_id: string;
+          team_member_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+        }[];
+      };
+      drop_push_subscription: { Args: { p_endpoint: string }; Returns: undefined };
+      record_push_result: { Args: { p_endpoint: string; p_ok: boolean }; Returns: undefined };
       /** 中目標（0026）。消すのも、まとめるのも本人だけ。 */
       soft_delete_member_goal: { Args: { p_goal_id: string }; Returns: undefined };
       /** 付いていたタグを移してから畳む。移した件数を返す。 */
